@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>App Meter</title>
+        <link>https://github.com/TadelUnso/app-meter</link>
+        <description>Install counts desktop widget for macOS</description>
+        <language>en</language>
+        <!-- Items are appended by the release workflow; an empty channel means
+             no update is offered, which is correct until the first release. -->
+    </channel>
+</rss>
