@@ -21,11 +21,8 @@ struct FiguresView: View {
                 }
             case .grid:
                 grid
-            // Task 7 rewrites this to render `rows`; for now it stays empty
-            // so the panel builds without lying about row figures it cannot
-            // yet produce.
             case .rows:
-                EmptyView()
+                rowsLayout
             }
 
             // Problems ride under the figures, never in place of them: stale
@@ -85,6 +82,83 @@ struct FiguresView: View {
                 }
             }
         }
+    }
+
+    /// One app per line, a column per store. The columns are headed once at the
+    /// top: at this density two bare numbers side by side say nothing about which
+    /// store is which.
+    private var rowsLayout: some View {
+        VStack(spacing: 4 * scale) {
+            HStack(spacing: 8 * scale) {
+                Spacer(minLength: 0)
+                Text("APP STORE")
+                    .font(Theme.label(scale: scale))
+                    .foregroundStyle(Theme.appStore)
+                    .lineLimit(1)
+                    .frame(width: 96 * scale, alignment: .trailing)
+                Text("GOOGLE PLAY")
+                    .font(Theme.label(scale: scale))
+                    .foregroundStyle(Theme.googlePlay)
+                    .lineLimit(1)
+                    .frame(width: 96 * scale, alignment: .trailing)
+            }
+            .padding(.horizontal, 10 * scale)
+
+            ForEach(rows) { row in
+                AppLine(row: row, scale: scale)
+            }
+        }
+    }
+}
+
+/// One app as a line: name, then a figure per store in fixed columns.
+private struct AppLine: View {
+    let row: AppRow
+    let scale: Double
+
+    var body: some View {
+        HStack(spacing: 8 * scale) {
+            Text(row.name)
+                .font(Theme.caption(scale: scale))
+                .foregroundStyle(Theme.text)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Spacer(minLength: 8 * scale)
+
+            figure(row.appStore)
+            figure(row.googlePlay)
+        }
+        .padding(.vertical, 5 * scale)
+        .padding(.horizontal, 10 * scale)
+        .background(
+            RoundedRectangle(cornerRadius: 8 * scale, style: .continuous)
+                .fill(Theme.panel.opacity(0.55))
+        )
+    }
+
+    /// An empty column where a store has nothing, rather than a zero: the app
+    /// is not published there, which is not the same as no one installing it.
+    @ViewBuilder private func figure(_ figures: AppFigures?) -> some View {
+        HStack(spacing: 4 * scale) {
+            if let figures {
+                Text(Fmt.installs(figures.lifetime))
+                    .font(Theme.caption(scale: scale))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+
+                if figures.today > 0 {
+                    Text(Fmt.delta(figures.today))
+                        .font(Theme.label(scale: scale))
+                        .foregroundStyle(Theme.accent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                }
+            }
+        }
+        .frame(width: 96 * scale, alignment: .trailing)
+        .help(figures.map { "Figures for \(Fmt.day($0.asOf))" } ?? "")
     }
 }
 
@@ -187,67 +261,5 @@ private struct StoreTile: View {
             RoundedRectangle(cornerRadius: 12 * scale, style: .continuous)
                 .fill(Theme.panel.opacity(0.55))
         )
-    }
-}
-
-/// One app on one store, as a line: for the five-and-up layout, where cards
-/// would push the panel taller than the screen.
-private struct FigureRow: View {
-    let figures: AppFigures
-    let scale: Double
-
-    var body: some View {
-        HStack(spacing: 8 * scale) {
-            StoreDot(store: figures.store, scale: scale)
-
-            Text(figures.name)
-                .font(Theme.caption(scale: scale))
-                .foregroundStyle(Theme.text)
-                .lineLimit(1)
-                .truncationMode(.tail)
-
-            Spacer(minLength: 8 * scale)
-
-            Text(Fmt.installs(figures.lifetime))
-                .font(Theme.caption(scale: scale))
-                .foregroundStyle(Theme.text)
-
-            DeltaText(value: figures.today, scale: scale)
-                .frame(minWidth: 44 * scale, alignment: .trailing)
-        }
-        .padding(.vertical, 5 * scale)
-        .padding(.horizontal, 10 * scale)
-        .background(
-            RoundedRectangle(cornerRadius: 8 * scale, style: .continuous)
-                .fill(Theme.panel.opacity(0.55))
-        )
-    }
-}
-
-/// The day's movement. Green when something arrived, dim dash when nothing —
-/// the dash is `Fmt.delta`'s doing, the colour follows it.
-private struct DeltaText: View {
-    let value: Int
-    let scale: Double
-
-    var body: some View {
-        Text(Fmt.delta(value))
-            .font(Theme.delta(scale: scale))
-            .foregroundStyle(value > 0 ? Theme.accent : Theme.dim)
-    }
-}
-
-/// The store marker: a small filled circle in the store's pastel, no logo.
-/// Brand marks at nine points would be smudges; a colour code reads instantly
-/// once seen beside the two-store pair a single app produces.
-private struct StoreDot: View {
-    let store: Store
-    let scale: Double
-
-    var body: some View {
-        Circle()
-            .fill(store == .appStore ? Theme.appStore : Theme.googlePlay)
-            .frame(width: 6 * scale, height: 6 * scale)
-            .help(store == .appStore ? "App Store" : "Google Play")
     }
 }
