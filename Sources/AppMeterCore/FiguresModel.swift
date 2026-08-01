@@ -30,6 +30,12 @@ public final class FiguresModel: ObservableObject {
 
     private var byStore: [Store: [AppFigures]] = [:]
     private var timer: Timer?
+    /// Guards against two walks running at once. `refresh()` suspends at every
+    /// `await`, and a young account's first walk is a thousand-odd sequential
+    /// requests, so the poll timer firing mid-walk — or `start()` being called
+    /// again because the interval changed in Settings — would otherwise launch
+    /// a second full pass against the same key while the first is still going.
+    private var refreshing = false
 
     public init() {}
 
@@ -80,6 +86,13 @@ public final class FiguresModel: ObservableObject {
     }
 
     public func refresh() async {
+        // A second call while one is already in flight is a no-op, not a
+        // queued retry — the timer will ask again on its own schedule, and
+        // there is nothing this call would learn that the running one won't.
+        guard !refreshing else { return }
+        refreshing = true
+        defer { refreshing = false }
+
         NSLog("[model] refresh started")
         defer { NSLog("[model] refresh finished: %d row(s), %d problem(s)", rows.count, problems.count) }
         var newProblems: [String] = []
