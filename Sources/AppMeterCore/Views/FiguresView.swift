@@ -19,10 +19,12 @@ struct FiguresView: View {
                 if let row = rows.first {
                     single(row)
                 }
-            // Tasks 6-7 rewrite these to render `rows`; for now they stay
-            // empty so the panel builds without lying about grid figures it
-            // cannot yet produce.
-            case .grid, .rows:
+            case .grid:
+                grid
+            // Task 7 rewrites this to render `rows`; for now it stays empty
+            // so the panel builds without lying about row figures it cannot
+            // yet produce.
+            case .rows:
                 EmptyView()
             }
 
@@ -64,6 +66,84 @@ struct FiguresView: View {
                     .foregroundStyle(Theme.dim)
             }
         }
+    }
+
+    private var grid: some View {
+        VStack(spacing: 10 * scale) {
+            ForEach(rows.chunks(of: LayoutMode.gridColumns), id: \.first!.id) { chunk in
+                HStack(alignment: .top, spacing: 10 * scale) {
+                    ForEach(chunk) { row in
+                        AppCard(row: row, scale: scale)
+                    }
+                    // A short last row keeps its cards the same width as the
+                    // full rows above it.
+                    if chunk.count < LayoutMode.gridColumns {
+                        ForEach(0..<(LayoutMode.gridColumns - chunk.count), id: \.self) { _ in
+                            Color.clear.frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// One app in the grid: its name, then a line per store it is published on.
+private struct AppCard: View {
+    let row: AppRow
+    let scale: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6 * scale) {
+            Text(row.name)
+                .font(Theme.title(scale: scale * 0.85))
+                .foregroundStyle(Theme.text)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            if let appStore = row.appStore {
+                StoreLine(figures: appStore, scale: scale)
+            }
+            if let googlePlay = row.googlePlay {
+                StoreLine(figures: googlePlay, scale: scale)
+            }
+        }
+        .padding(12 * scale)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12 * scale, style: .continuous)
+                .fill(Theme.panel.opacity(0.55))
+        )
+    }
+}
+
+/// A store's figures on one line: the store named, the total, the day's movement.
+/// The date is a tooltip here — naming it on every line would cost more width
+/// than the grid has.
+private struct StoreLine: View {
+    let figures: AppFigures
+    let scale: Double
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6 * scale) {
+            Text(figures.store == .appStore ? "APP STORE" : "GOOGLE PLAY")
+                .font(Theme.label(scale: scale))
+                .foregroundStyle(figures.store == .appStore ? Theme.appStore : Theme.googlePlay)
+                .frame(width: 66 * scale, alignment: .leading)
+
+            Text(Fmt.installs(figures.lifetime))
+                .font(Theme.value(scale: scale * 0.55))
+                .foregroundStyle(Theme.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+
+            if figures.today > 0 {
+                Text(Fmt.delta(figures.today))
+                    .font(Theme.delta(scale: scale))
+                    .foregroundStyle(Theme.accent)
+            }
+        }
+        .help("Figures for \(Fmt.day(figures.asOf))")
     }
 }
 
