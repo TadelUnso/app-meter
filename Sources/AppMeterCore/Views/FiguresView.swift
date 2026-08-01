@@ -45,22 +45,12 @@ struct FiguresView: View {
     }
 
     private func single(_ row: AppRow) -> some View {
-        VStack(alignment: .leading, spacing: 8 * scale) {
-            HStack(alignment: .top, spacing: 10 * scale) {
-                if let appStore = row.appStore {
-                    StoreTile(figures: appStore, scale: scale)
-                }
-                if let googlePlay = row.googlePlay {
-                    StoreTile(figures: googlePlay, scale: scale)
-                }
+        HStack(alignment: .top, spacing: 10 * scale) {
+            if let appStore = row.appStore {
+                StoreTile(figures: appStore, scale: scale)
             }
-
-            // Only here: adding up two stores of one app is a real number, adding
-            // up two different apps is not.
-            if row.appStore != nil, row.googlePlay != nil {
-                Text("\(Fmt.installs(row.lifetime)) together · \(Fmt.delta(row.today)) today")
-                    .font(Theme.caption(scale: scale))
-                    .foregroundStyle(Theme.dim)
+            if let googlePlay = row.googlePlay {
+                StoreTile(figures: googlePlay, scale: scale)
             }
         }
     }
@@ -206,13 +196,13 @@ private struct StoreLine: View {
                 .frame(width: 66 * scale, alignment: .leading)
                 .lineLimit(1)
 
-            // Theme.value grew from 34 to 42pt for the single-app tile; the
-            // multiplier here is trimmed from 0.55 to 0.45 to hold this line's
-            // actual size steady (34 * 0.55 ≈ 42 * 0.45) — the two-column grid
-            // card has no extra width to give a bigger figure, and a full
+            // Theme.value grew from 42 to 63pt for the single-app tile; the
+            // multiplier here is trimmed from 0.45 to 0.3 to hold this line's
+            // actual size steady (42 * 0.45 = 63 * 0.3 = 18.9) — the two-column
+            // grid card has no extra width to give a bigger figure, and a full
             // lifetime total next to a delta was already close to the edge.
             Text(Fmt.installs(figures.lifetime))
-                .font(Theme.value(scale: scale * 0.45))
+                .font(Theme.value(scale: scale * 0.3))
                 .foregroundStyle(Theme.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)

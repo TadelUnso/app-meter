@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import AppMeterCore
 
@@ -43,11 +44,39 @@ struct LayoutModeTests {
         AppRow(id: name, name: name, appStore: nil, googlePlay: nil)
     }
 
+    private static func figures(store: Store, lifetime: Int, today: Int) -> AppFigures {
+        AppFigures(
+            id: "id",
+            name: "name",
+            store: store,
+            lifetime: lifetime,
+            today: today,
+            asOf: Date(timeIntervalSince1970: 0)
+        )
+    }
+
     /// One app puts its own name in the title bar; anything else is the app's own
     /// name, which would be a lie about which figures are on screen.
     @Test func theTitleIsTheAppNameOnlyWhenThereIsOneApp() {
         #expect(LayoutMode.title(for: []) == "App Meter")
         #expect(LayoutMode.title(for: [Self.row("Бюро Знахідок")]) == "Бюро Знахідок")
         #expect(LayoutMode.title(for: [Self.row("One"), Self.row("Two")]) == "App Meter")
+    }
+
+    /// Adding two stores of one app is a real number. Adding up different apps is
+    /// not, so the summary exists only for the single-app panel.
+    @Test func theCombinedTotalIsOnlyForOneAppOnBothStores() {
+        let both = AppRow(
+            id: "com.example.app",
+            name: "Finder",
+            appStore: Self.figures(store: .appStore, lifetime: 15, today: 1),
+            googlePlay: Self.figures(store: .googlePlay, lifetime: 9, today: 0)
+        )
+        #expect(LayoutMode.combinedTotal(for: [both]) == "24 together · +1 today")
+
+        let oneStore = AppRow(id: "a", name: "A", appStore: both.appStore, googlePlay: nil)
+        #expect(LayoutMode.combinedTotal(for: [oneStore]) == nil)
+        #expect(LayoutMode.combinedTotal(for: [both, both]) == nil)
+        #expect(LayoutMode.combinedTotal(for: []) == nil)
     }
 }

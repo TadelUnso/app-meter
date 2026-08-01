@@ -33,6 +33,17 @@ public enum LayoutMode: Equatable {
     public static func title(for rows: [AppRow]) -> String {
         rows.count == 1 ? rows[0].name : "App Meter"
     }
+
+    /// The two stores of one app, added up — or nil when there is nothing
+    /// meaningful to add. Lives here rather than in the view because the footer
+    /// that shows it is built beside the freshness line, a level above the
+    /// layout that knows about rows.
+    public static func combinedTotal(for rows: [AppRow]) -> String? {
+        guard rows.count == 1, let row = rows.first,
+              row.appStore != nil, row.googlePlay != nil
+        else { return nil }
+        return "\(Fmt.installs(row.lifetime)) together · \(Fmt.delta(row.today)) today"
+    }
 }
 
 extension Array {

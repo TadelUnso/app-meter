@@ -38,9 +38,7 @@ public struct WidgetRootView: View {
                 isLoading: model.isLoading,
                 scale: scale
             )
-            if let lastRefresh = model.lastRefresh {
-                freshness(since: lastRefresh)
-            }
+            footer
         }
         .onAppear { model.start() }
         // Rebuilding the timer on any change of the stored interval; the other
@@ -108,10 +106,33 @@ public struct WidgetRootView: View {
         }
     }
 
-    /// How long ago the stores answered, trailing-aligned under the figures.
-    /// Wrapped in a periodic timeline so the text itself goes stale — without
-    /// it, "just now" would sit there unchanged until the next poll, up to
-    /// fifteen minutes later.
+    /// The combined total leading, the freshness trailing — one row instead of
+    /// two, since both are one-line captions about the same figures above them.
+    /// Shown whenever either half has something to say; the `Spacer` keeps the
+    /// freshness pinned right even when there is no total beside it.
+    private var footer: some View {
+        let combinedTotal = LayoutMode.combinedTotal(for: model.rows)
+        return Group {
+            if combinedTotal != nil || model.lastRefresh != nil {
+                HStack(spacing: 8 * scale) {
+                    if let combinedTotal {
+                        Text(combinedTotal)
+                            .font(Theme.caption(scale: scale))
+                            .foregroundStyle(Theme.dim)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    if let lastRefresh = model.lastRefresh {
+                        freshness(since: lastRefresh)
+                    }
+                }
+            }
+        }
+    }
+
+    /// How long ago the stores answered. Wrapped in a periodic timeline so the
+    /// text itself goes stale — without it, "just now" would sit there
+    /// unchanged until the next poll, up to fifteen minutes later.
     ///
     /// Anchored to `lastRefresh`, not `.now`: this is a function, re-run on
     /// every body evaluation of `WidgetRootView` (rows, problems, isLoading,
@@ -121,13 +142,16 @@ public struct WidgetRootView: View {
     /// between polls, so the schedule stays put, and its ticks land on the
     /// minute boundaries after the refresh — which is what the reading is
     /// counting anyway.
+    ///
+    /// Only this half sits inside the timeline: the total beside it does not
+    /// need re-rendering every minute, and widening what redraws on a timer is
+    /// how a cheap view becomes an expensive one.
     private func freshness(since lastRefresh: Date) -> some View {
         TimelineView(.periodic(from: lastRefresh, by: 60)) { context in
             Text(Fmt.age(lastRefresh, now: context.date))
                 .font(Theme.caption(scale: scale))
                 .foregroundStyle(Theme.dim)
                 .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 
