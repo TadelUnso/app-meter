@@ -36,8 +36,7 @@ the reports Apple and Google produce for you, using credentials you supply.
 - Resizable: drag either side edge (320–900 pt), saved across launches
 - 🔒 Clickable lock icon (plus a "Lock position" menu item) pins both position
   and size
-- Hide the widget with the eye icon; bring it back via **Show on desktop** in
-  the menu bar
+- Hide or restore the widget with **Show on desktop** in the menu bar
 - Launch at login toggle; no Dock icon
 
 ## Requirements
