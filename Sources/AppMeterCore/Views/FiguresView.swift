@@ -3,24 +3,23 @@ import SwiftUI
 /// The figures themselves, laid out by `LayoutMode`: one app fills the panel,
 /// a few share a grid, many collapse into rows.
 struct FiguresView: View {
-    let figures: [AppFigures]
+    let rows: [AppRow]
     let problems: [String]
     let isLoading: Bool
     let scale: Double
 
-    private var mode: LayoutMode { LayoutMode.mode(for: figures.count) }
+    private var mode: LayoutMode { LayoutMode.mode(for: rows.count) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10 * scale) {
             switch mode {
             case .empty:
                 placeholder
-            case .single:
-                FigureCard(figures: figures[0], scale: scale, prominent: true)
-            case .grid:
-                grid
-            case .rows:
-                rows
+            // Tasks 5-7 rewrite these to render `rows`; for now they stay
+            // empty so the panel builds without lying about single-app or
+            // grid figures it cannot yet produce.
+            case .single, .grid, .rows:
+                EmptyView()
             }
 
             // Problems ride under the figures, never in place of them: stale
@@ -40,33 +39,6 @@ struct FiguresView: View {
             .foregroundStyle(Theme.dim)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 22 * scale)
-    }
-
-    private var grid: some View {
-        VStack(spacing: 10 * scale) {
-            ForEach(figures.chunks(of: LayoutMode.gridColumns), id: \.first!.id) { row in
-                HStack(alignment: .top, spacing: 10 * scale) {
-                    ForEach(row) { app in
-                        FigureCard(figures: app, scale: scale, prominent: false)
-                    }
-                    // A short last row keeps its cards the same width as the
-                    // full rows above it.
-                    if row.count < LayoutMode.gridColumns {
-                        ForEach(0..<(LayoutMode.gridColumns - row.count), id: \.self) { _ in
-                            Color.clear.frame(maxWidth: .infinity)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private var rows: some View {
-        VStack(spacing: 4 * scale) {
-            ForEach(figures) { app in
-                FigureRow(figures: app, scale: scale)
-            }
-        }
     }
 }
 

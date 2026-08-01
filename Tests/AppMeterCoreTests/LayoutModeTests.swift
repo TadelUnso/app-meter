@@ -38,4 +38,16 @@ struct LayoutModeTests {
     @Test func chunksOfZeroIsEmpty() {
         #expect([1, 2, 3].chunks(of: 0).isEmpty)
     }
+
+    private static func row(_ name: String) -> AppRow {
+        AppRow(id: name, name: name, appStore: nil, googlePlay: nil)
+    }
+
+    /// One app puts its own name in the title bar; anything else is the app's own
+    /// name, which would be a lie about which figures are on screen.
+    @Test func theTitleIsTheAppNameOnlyWhenThereIsOneApp() {
+        #expect(LayoutMode.title(for: []) == "App Meter")
+        #expect(LayoutMode.title(for: [Self.row("Бюро Знахідок")]) == "Бюро Знахідок")
+        #expect(LayoutMode.title(for: [Self.row("One"), Self.row("Two")]) == "App Meter")
+    }
 }

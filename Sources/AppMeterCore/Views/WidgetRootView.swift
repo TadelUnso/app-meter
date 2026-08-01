@@ -33,11 +33,8 @@ public struct WidgetRootView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: gap) {
             titleBar
-            // Stopgap: FiguresView still takes the old flat [AppFigures] shape.
-            // Flattening rows back out keeps the build green until Task 4
-            // rewrites the view to take rows directly.
             FiguresView(
-                figures: model.rows.compactMap(\.appStore) + model.rows.compactMap(\.googlePlay),
+                rows: model.rows,
                 problems: model.problems,
                 isLoading: model.isLoading,
                 scale: scale
@@ -87,7 +84,7 @@ public struct WidgetRootView: View {
             HStack(spacing: 6 * scale) {
                 TitleGlyphView(scale: scale)
 
-                Text("App Meter")
+                Text(LayoutMode.title(for: model.rows))
                     .font(Theme.title(scale: scale))
                     .foregroundStyle(Theme.text)
 

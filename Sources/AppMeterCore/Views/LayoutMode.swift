@@ -27,6 +27,12 @@ public enum LayoutMode: Equatable {
         default: .rows
         }
     }
+
+    /// What the title bar says. One app names itself; a panel showing several
+    /// names the panel, because no one of them speaks for the rest.
+    public static func title(for rows: [AppRow]) -> String {
+        rows.count == 1 ? rows[0].name : "App Meter"
+    }
 }
 
 extension Array {
