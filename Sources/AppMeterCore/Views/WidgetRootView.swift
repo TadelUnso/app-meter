@@ -87,6 +87,8 @@ public struct WidgetRootView: View {
                 Text(LayoutMode.title(for: model.rows))
                     .font(Theme.title(scale: scale))
                     .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
                 Spacer(minLength: 0)
 
