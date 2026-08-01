@@ -38,27 +38,59 @@ ctx.setFillColor(cgColor(hex: 0x1E2230))
 ctx.addPath(CGPath(roundedRect: bgRect, cornerWidth: 180, cornerHeight: 180, transform: nil))
 ctx.fillPath()
 
-// Three ascending bars, echoing the menu bar glyph. The tallest is the accent
-// green — the colour the widget uses for a day's growth.
-let bars: [(height: CGFloat, colour: UInt32)] = [
-    (240, 0x404557), // Theme.track
-    (360, 0xB09DE6), // Theme.appStore
-    (480, 0xA6D189), // Theme.accent / Theme.googlePlay
-]
+// A dial, echoing the menu bar's gauge.with.needle glyph in the widget's own
+// colours rather than copying its monochrome strokes. Centred horizontally,
+// sitting below the canvas's vertical middle so the arc's opening at the
+// bottom has room before it reaches the background rect's edge.
+let dialCenter = CGPoint(x: CGFloat(masterSize) / 2, y: 460)
+let dialRadius: CGFloat = 320
+let arcWidth: CGFloat = 90
 
-let barWidth: CGFloat = 120
-let barGap: CGFloat = 60
-let totalWidth = barWidth * CGFloat(bars.count) + barGap * CGFloat(bars.count - 1)
-var x = (CGFloat(masterSize) - totalWidth) / 2
-let baseline: CGFloat = 290
+// Angles use the standard math convention (0° = east, increasing
+// counterclockwise). The gap sits at the bottom: the arc runs from
+// lower-left, up over the top, to lower-right — 240° of a 360° circle,
+// leaving a 120° opening below.
+let arcStart = 210.0 * CGFloat.pi / 180
+let arcEnd = -30.0 * CGFloat.pi / 180
+// Two thirds of the sweep, from the start — the "reached" portion of the
+// scale, and where the needle points.
+let accentEnd = arcStart - (arcStart - arcEnd) * (2.0 / 3.0)
 
-for bar in bars {
-    let rect = CGRect(x: x, y: baseline, width: barWidth, height: bar.height)
-    ctx.setFillColor(cgColor(hex: bar.colour))
-    ctx.addPath(CGPath(roundedRect: rect, cornerWidth: 40, cornerHeight: 40, transform: nil))
-    ctx.fillPath()
-    x += barWidth + barGap
-}
+ctx.setLineCap(.round)
+ctx.setLineWidth(arcWidth)
+
+ctx.setStrokeColor(cgColor(hex: 0x404557)) // Theme.track — the unfilled scale
+ctx.beginPath()
+ctx.addArc(center: dialCenter, radius: dialRadius, startAngle: arcStart, endAngle: arcEnd, clockwise: true)
+ctx.strokePath()
+
+ctx.setStrokeColor(cgColor(hex: 0xA6D189)) // Theme.accent — installs climbing
+ctx.beginPath()
+ctx.addArc(center: dialCenter, radius: dialRadius, startAngle: arcStart, endAngle: accentEnd, clockwise: true)
+ctx.strokePath()
+
+// Needle stops at the arc's inner edge rather than crossing it, so the tip
+// doesn't merge into the stroke it's pointing at.
+let needleLength = dialRadius - arcWidth / 2
+let needleTip = CGPoint(
+    x: dialCenter.x + needleLength * cos(accentEnd),
+    y: dialCenter.y + needleLength * sin(accentEnd)
+)
+ctx.setStrokeColor(cgColor(hex: 0xC7CCDE)) // Theme.text
+ctx.setLineWidth(28)
+ctx.beginPath()
+ctx.move(to: dialCenter)
+ctx.addLine(to: needleTip)
+ctx.strokePath()
+
+// Hub circle over the needle's base so it reads as a needle, not a spoke.
+let hubRadius: CGFloat = 48
+ctx.setFillColor(cgColor(hex: 0xC7CCDE)) // Theme.text
+ctx.addPath(CGPath(
+    ellipseIn: CGRect(x: dialCenter.x - hubRadius, y: dialCenter.y - hubRadius, width: hubRadius * 2, height: hubRadius * 2),
+    transform: nil
+))
+ctx.fillPath()
 
 guard let masterImage = ctx.makeImage() else {
     fputs("ERROR: could not create master CGImage\n", stderr)
