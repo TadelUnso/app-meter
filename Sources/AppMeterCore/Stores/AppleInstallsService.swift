@@ -9,9 +9,10 @@ import Foundation
 /// Requests go one at a time. After the first run almost all of them are served
 /// from the cache, and a burst of forty parallel requests would be a good way
 /// to meet Apple's rate limiter for no gain.
-/// Where a period's report comes from. The one implementation that matters is
-/// `AppStoreConnectClient`; the protocol exists so the caching and summing
-/// below can be tested without a network.
+/// Where AppleInstallsService fetches what it needs from App Store Connect:
+/// sales reports (cached and summed into figures) and app metadata (bundle ids,
+/// used to pair apps across stores). Lives behind a protocol so the service can
+/// be tested without a network.
 public protocol SalesReportSource: Sendable {
     func report(for period: SalesPeriod) async throws -> SalesReport?
     /// Apple identifier → app. Empty when the key cannot list apps; the service
