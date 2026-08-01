@@ -90,10 +90,14 @@ public struct AppleInstallsService: Sendable {
             }
         }
 
+        // Empty when the key cannot list apps, which the mapping below tolerates.
+        let known = (try? await client.apps()) ?? [:]
+
         return totals.keys.sorted().map { identifier in
-            AppFigures(
-                id: identifier,
-                name: titles[identifier] ?? identifier,
+            let app = known[identifier]
+            return AppFigures(
+                id: app?.bundleID ?? identifier,
+                name: app?.name ?? titles[identifier] ?? identifier,
                 store: .appStore,
                 lifetime: totals[identifier] ?? 0,
                 today: latestDay?.units[identifier] ?? 0,

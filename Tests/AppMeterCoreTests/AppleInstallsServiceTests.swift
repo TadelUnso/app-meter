@@ -189,4 +189,31 @@ struct AppleInstallsServiceTests {
         #expect(figures.map(\.lifetime) == [10, 25])
         #expect(figures.map(\.name) == ["First App", "Second App"])
     }
+
+    /// The bundle id is the only key the Play side can be matched on, so it
+    /// replaces the Apple identifier wherever it is known.
+    @Test func figuresAreKeyedByBundleIdWhenItIsKnown() async throws {
+        let source = StubSource(
+            [.yearly(2025): Self.report(units: 40)],
+            apps: ["6789246448": AppStoreApp(bundleID: "com.biuroznakhidok.app", name: "Бюро Знахідок")]
+        )
+
+        let figures = try await AppleInstallsService(client: source, history: Self.store())
+            .figures(now: Self.secondOfJanuary)
+
+        #expect(figures[0].id == "com.biuroznakhidok.app")
+        #expect(figures[0].name == "Бюро Знахідок")
+    }
+
+    /// A key that cannot list an app must not make that app's installs vanish.
+    @Test func figuresSurviveAnAppTheKeyCannotList() async throws {
+        let source = StubSource([.yearly(2025): Self.report(units: 40)], apps: [:])
+
+        let figures = try await AppleInstallsService(client: source, history: Self.store())
+            .figures(now: Self.secondOfJanuary)
+
+        #expect(figures[0].id == "6789246448")
+        #expect(figures[0].name == "Бюро Знахідок")
+        #expect(figures[0].lifetime == 40)
+    }
 }
