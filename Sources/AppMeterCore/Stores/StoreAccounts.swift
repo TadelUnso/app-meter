@@ -98,9 +98,8 @@ public enum SalesDump {
                 if let report = try await client.installsReport(
                     package: package, year: target.year, month: target.month
                 ) {
-                    NSLog("[probe] %04d-%02d direct GET worked: %d day(s), latest total %d",
-                          target.year, target.month, report.days.count,
-                          report.latest?.totalUserInstalls ?? -1)
+                    NSLog("[probe] %04d-%02d direct GET worked: %d day(s), %d install(s)",
+                          target.year, target.month, report.days.count, report.userInstalls)
                 } else {
                     NSLog("[probe] %04d-%02d: no file (404)", target.year, target.month)
                 }

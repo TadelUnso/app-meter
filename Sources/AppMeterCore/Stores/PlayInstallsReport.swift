@@ -2,22 +2,29 @@ import Foundation
 
 /// One month of Play Console's installs overview, parsed.
 ///
-/// Two things about these files catch people out, and both are handled here:
-/// they are UTF-16 with a byte-order mark, and they carry a running total
-/// alongside the daily figures — so unlike Apple's reports, the lifetime count
-/// is simply read rather than reconstructed.
+/// Two things about these files catch people out. They are UTF-16 with a
+/// byte-order mark. And the `Total User Installs` column, which used to carry a
+/// running total, has been zero in every row since the file changed shape at
+/// the end of July 2026 — so the lifetime figure is summed from the daily
+/// column here, the same reconstruction Apple's reports have always needed.
 public struct PlayInstallsReport: Equatable, Sendable {
     public struct Day: Equatable, Sendable {
         public let date: Date
-        public let packageName: String
-        /// Google's own cumulative column. Users, not devices: one person with
-        /// a phone and a tablet is one install, which is the figure a developer
-        /// means by "how many people have this".
-        public let totalUserInstalls: Int
+        /// Nil when the file omits the column. Nothing depends on it — the app
+        /// a report belongs to is the one in its filename — so its absence is
+        /// not a reason to reject the file.
+        public let packageName: String?
+        /// Users, not devices: one person with a phone and a tablet is one
+        /// install, which is the figure a developer means by "how many people
+        /// have this".
         public let dailyUserInstalls: Int
     }
 
     public let days: [Day]
+
+    /// The month's own installs. Summing these across every month in the bucket
+    /// is what the lifetime total is made of.
+    public var userInstalls: Int { days.reduce(0) { $0 + $1.dailyUserInstalls } }
 
     /// The newest day in the file. Play publishes several days behind, so this
     /// is what the panel means by "today".
@@ -40,10 +47,12 @@ public struct PlayInstallsReport: Equatable, Sendable {
     private enum Column {
         static let date = "Date"
         static let package = "Package Name"
-        static let total = "Total User Installs"
         static let daily = "Daily User Installs"
 
-        static let required = [date, package, total, daily]
+        /// Only the columns the panel actually reads. Play renames and drops
+        /// columns — `Package Name` became `Package name` in July 2026 — and a
+        /// report is still usable without one that nothing consults.
+        static let required = [date, daily]
     }
 
     private static let dayFormat: DateFormatter = {
@@ -78,18 +87,22 @@ public struct PlayInstallsReport: Equatable, Sendable {
             let fields = Self.fields(of: String(line))
             guard fields.count >= index.count else { return nil }
 
-            func field(_ name: String) -> String { fields[index[name]!] }
+            func field(_ name: String) -> String? {
+                guard let position = index[name], position < fields.count else { return nil }
+                return fields[position]
+            }
 
             // A row whose date does not parse is not a day — Play appends no
             // totals row today, but a file that gains one must not become an
             // install count of zero.
-            guard let date = Self.dayFormat.date(from: field(Column.date)) else { return nil }
+            guard let text = field(Column.date),
+                  let date = Self.dayFormat.date(from: text)
+            else { return nil }
 
             return Day(
                 date: date,
                 packageName: field(Column.package),
-                totalUserInstalls: Int(field(Column.total)) ?? 0,
-                dailyUserInstalls: Int(field(Column.daily)) ?? 0
+                dailyUserInstalls: field(Column.daily).flatMap(Int.init) ?? 0
             )
         }
     }

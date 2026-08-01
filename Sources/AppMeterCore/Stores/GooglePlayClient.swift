@@ -17,6 +17,21 @@ public enum GooglePlayError: LocalizedError {
     }
 }
 
+/// One month's worth of report, as the filenames name it.
+public struct YearMonth: Hashable, Comparable, Sendable {
+    public let year: Int
+    public let month: Int
+
+    public init(year: Int, month: Int) {
+        self.year = year
+        self.month = month
+    }
+
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        (lhs.year, lhs.month) < (rhs.year, rhs.month)
+    }
+}
+
 /// Reads install reports out of the Play Console reporting bucket.
 ///
 /// Play exports one CSV per app per month, named
@@ -81,9 +96,22 @@ public struct GooglePlayClient: Sendable {
 
     // MARK: Bucket reads
 
-    /// The packages that have ever had an installs report: one listing of the
-    /// installs prefix, reduced to the package names in the filenames.
-    public func packageNames() async throws -> [String] {
+    /// The months a package has an installs report for, oldest first.
+    ///
+    /// Taken from the listing rather than counted back from today: the lifetime
+    /// total is the sum of every month, and how far back that goes is a fact
+    /// about the app, not something to guess at the cost of a 404 per miss.
+    public func overviewMonths() async throws -> [String: [YearMonth]] {
+        var months: [String: [YearMonth]] = [:]
+        for object in try await overviewObjects() {
+            guard let file = Self.overviewFile(fromObjectName: object) else { continue }
+            months[file.package, default: []].append(file.month)
+        }
+        return months.mapValues { $0.sorted() }
+    }
+
+    /// Every installs overview object in the bucket.
+    private func overviewObjects() async throws -> [String] {
         var components = URLComponents(string: "https://storage.googleapis.com/storage/v1/b/\(bucket)/o")!
         components.queryItems = [
             URLQueryItem(name: "prefix", value: "stats/installs/installs_"),
@@ -96,7 +124,7 @@ public struct GooglePlayClient: Sendable {
             let nextPageToken: String?
         }
 
-        var names: Set<String> = []
+        var names: [String] = []
         var pageToken: String?
         let token = try await accessToken()
 
@@ -109,15 +137,11 @@ public struct GooglePlayClient: Sendable {
             let data = try await get(pageComponents.url!, token: token)
             let listing = try JSONDecoder().decode(Listing.self, from: data)
 
-            for item in listing.items ?? [] {
-                if let package = Self.packageName(fromObjectName: item.name) {
-                    names.insert(package)
-                }
-            }
+            names.append(contentsOf: (listing.items ?? []).map(\.name))
             pageToken = listing.nextPageToken
         } while pageToken != nil
 
-        return names.sorted()
+        return names
     }
 
     /// One month's overview for one package, nil when that month has no file
@@ -144,10 +168,11 @@ public struct GooglePlayClient: Sendable {
         }
     }
 
-    /// `installs_<package>_<yyyyMM>_overview.csv` → the package. Underscores
-    /// in the package name cannot confuse this: the tail two segments are
-    /// fixed, and everything between the first segment and them is the name.
-    static func packageName(fromObjectName name: String) -> String? {
+    /// `installs_<package>_<yyyyMM>_overview.csv` → the package and its month.
+    /// Underscores in the package name cannot confuse this: the tail two
+    /// segments are fixed, and everything between the first segment and them is
+    /// the name.
+    static func overviewFile(fromObjectName name: String) -> (package: String, month: YearMonth)? {
         guard let filename = name.split(separator: "/").last,
               filename.hasSuffix("_overview.csv"),
               filename.hasPrefix("installs_")
@@ -155,11 +180,15 @@ public struct GooglePlayClient: Sendable {
 
         let trimmed = filename.dropFirst("installs_".count).dropLast("_overview.csv".count)
         // What remains is <package>_<yyyyMM>; the date segment is fixed-width.
-        guard let separator = trimmed.lastIndex(of: "_"),
-              trimmed[trimmed.index(after: separator)...].count == 6
+        guard let separator = trimmed.lastIndex(of: "_") else { return nil }
+        let stamp = trimmed[trimmed.index(after: separator)...]
+        guard stamp.count == 6,
+              let year = Int(stamp.prefix(4)),
+              let month = Int(stamp.suffix(2)),
+              (1...12).contains(month)
         else { return nil }
 
-        return String(trimmed[..<separator])
+        return (String(trimmed[..<separator]), YearMonth(year: year, month: month))
     }
 
     private func get(_ url: URL, token: String) async throws -> Data {

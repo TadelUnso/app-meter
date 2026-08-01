@@ -4,7 +4,8 @@ import Testing
 
 @Suite("Play installs report")
 struct PlayInstallsReportTests {
-    /// Column set and quoting follow a real installs overview file.
+    /// Column set and quoting follow a real installs overview file as Play
+    /// wrote it before the July 2026 change.
     private static let csv = """
     "Date","Package Name","Daily Device Installs","Daily Device Uninstalls","Daily Device Upgrades","Total User Installs","Daily User Installs","Daily User Uninstalls","Active Device Installs"
     2026-07-26,com.tadelunso.finder,4,1,0,120,3,1,98
@@ -29,12 +30,15 @@ struct PlayInstallsReportTests {
         #expect(report.days.count == 3)
     }
 
-    /// Google supplies the cumulative column, so the lifetime total is read
-    /// rather than summed — summing the daily column would count the months
-    /// before this file not at all.
-    @Test func latestDayCarriesTheRunningTotal() throws {
+    /// The month's own figure is the sum of its days. Google's cumulative
+    /// column reads zero in every row now, so nothing may be taken from it.
+    @Test func theMonthsInstallsAreTheSumOfItsDays() throws {
+        let report = try PlayInstallsReport(csv: Self.utf16(Self.csv))
+        #expect(report.userInstalls == 11)
+    }
+
+    @Test func theLatestDayIsTheNewestRow() throws {
         let latest = try #require(try PlayInstallsReport(csv: Self.utf16(Self.csv)).latest)
-        #expect(latest.totalUserInstalls == 128)
         #expect(latest.dailyUserInstalls == 2)
 
         var calendar = Calendar(identifier: .gregorian)
@@ -50,7 +54,22 @@ struct PlayInstallsReportTests {
         """
         let report = try PlayInstallsReport(text: csv)
         #expect(report.latest?.packageName == "com.example.app, ltd")
-        #expect(report.latest?.totalUserInstalls == 128)
+        #expect(report.latest?.dailyUserInstalls == 2)
+    }
+
+    /// The shape Play switched to at the end of July 2026: no quoting, the
+    /// package column renamed, three columns appended, and the cumulative
+    /// column left at zero.
+    @Test func readsTheShapePlaySwitchedTo() throws {
+        let csv = """
+        Date,Package name,Daily Device Installs,Daily Device Uninstalls,Daily Device Upgrades,Total User Installs,Daily User Installs,Daily User Uninstalls,Active Device Installs,Install events,Update events,Uninstall events
+        2026-07-08,com.biuroznakhidok.app,0,0,0,0,0,0,0,0,1,0
+        2026-07-09,com.biuroznakhidok.app,10,0,0,0,9,0,8,10,0,0
+        """
+        let report = try PlayInstallsReport(text: csv)
+        #expect(report.days.count == 2)
+        #expect(report.userInstalls == 9)
+        #expect(report.latest?.packageName == nil)
     }
 
     @Test func complainsAboutAFileThatIsNotAnInstallsReport() {
@@ -70,5 +89,6 @@ struct PlayInstallsReportTests {
         let report = try PlayInstallsReport(text: header)
         #expect(report.days.isEmpty)
         #expect(report.latest == nil)
+        #expect(report.userInstalls == 0)
     }
 }
