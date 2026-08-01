@@ -93,16 +93,39 @@ public struct AppleInstallsService: Sendable {
         // Empty when the key cannot list apps, which the mapping below tolerates.
         let known = (try? await client.apps()) ?? [:]
 
-        return totals.keys.sorted().map { identifier in
+        // An app re-created under a new Apple identifier keeps its bundle id,
+        // so both identifiers turn up in the history and must be combined.
+        var byID: [String: AppFigures] = [:]
+        for identifier in totals.keys.sorted() {
             let app = known[identifier]
-            return AppFigures(
-                id: app?.bundleID ?? identifier,
-                name: app?.name ?? titles[identifier] ?? identifier,
-                store: .appStore,
-                lifetime: totals[identifier] ?? 0,
-                today: latestDay?.units[identifier] ?? 0,
-                asOf: latestDay?.date ?? now
-            )
+            let id = app?.bundleID ?? identifier
+            let name = app?.name ?? titles[identifier] ?? identifier
+            let lifetime = totals[identifier] ?? 0
+            let today = latestDay?.units[identifier] ?? 0
+            let asOf = latestDay?.date ?? now
+
+            if let existing = byID[id] {
+                // Same bundle id from a different Apple identifier: combine them.
+                byID[id] = AppFigures(
+                    id: id,
+                    name: existing.name.isEmpty ? name : existing.name,
+                    store: .appStore,
+                    lifetime: existing.lifetime + lifetime,
+                    today: existing.today + today,
+                    asOf: max(existing.asOf, asOf)
+                )
+            } else {
+                byID[id] = AppFigures(
+                    id: id,
+                    name: name,
+                    store: .appStore,
+                    lifetime: lifetime,
+                    today: today,
+                    asOf: asOf
+                )
+            }
         }
+
+        return byID.keys.sorted().map { byID[$0]! }
     }
 }

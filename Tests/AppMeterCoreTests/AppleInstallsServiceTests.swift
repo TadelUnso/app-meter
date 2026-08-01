@@ -216,4 +216,28 @@ struct AppleInstallsServiceTests {
         #expect(figures[0].name == "Бюро Знахідок")
         #expect(figures[0].lifetime == 40)
     }
+
+    /// An app re-created under a new Apple identifier keeps its bundle id, so
+    /// both identifiers turn up in the history and must not become two rows —
+    /// one of which would then quietly overwrite the other.
+    @Test func twoIdentifiersSharingABundleIdBecomeOneApp() async throws {
+        let source = StubSource(
+            [.yearly(2025): try! SalesReport(tsv: """
+            SKU\tTitle\tProduct Type Identifier\tUnits\tApple Identifier
+            old\tFinder\t1T\t30\t111
+            new\tFinder\t1T\t12\t222
+            """)],
+            apps: [
+                "111": AppStoreApp(bundleID: "com.example.finder", name: "Finder"),
+                "222": AppStoreApp(bundleID: "com.example.finder", name: "Finder"),
+            ]
+        )
+
+        let figures = try await AppleInstallsService(client: source, history: Self.store())
+            .figures(now: Self.secondOfJanuary)
+
+        #expect(figures.count == 1)
+        #expect(figures[0].id == "com.example.finder")
+        #expect(figures[0].lifetime == 42)
+    }
 }
