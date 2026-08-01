@@ -174,6 +174,24 @@ struct AppleInstallsServiceTests {
         #expect(await source.requestCount(for: .daily(year: 2026, month: 1, day: 15)) == 1)
     }
 
+    /// A year before the app existed answers 404 forever. Expanding it into months
+    /// and days on every refresh is how a young account came to cost a thousand
+    /// requests an hour, so a settled period's absence is remembered.
+    @Test func aLongEmptyPeriodIsAskedForOnceAndThenRemembered() async throws {
+        let source = StubSource([:])
+        let service = AppleInstallsService(client: source, history: Self.store())
+
+        _ = try await service.installs(now: Self.secondOfJanuary)
+        let afterFirst = await source.requested.count
+        _ = try await service.installs(now: Self.secondOfJanuary)
+        let afterSecond = await source.requested.count
+
+        // The second pass re-reads only what is still open: the current year and
+        // the days of the current month.
+        #expect(afterSecond - afterFirst < afterFirst)
+        #expect(await source.requestCount(for: .yearly(2024)) == 1)
+    }
+
     @Test func reportsNothingWhenNoPeriodHasFigures() async throws {
         let figures = try await AppleInstallsService(client: StubSource([:]), history: Self.store())
             .installs(now: Self.secondOfJanuary).figures

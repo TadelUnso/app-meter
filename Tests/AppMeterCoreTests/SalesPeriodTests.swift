@@ -105,4 +105,27 @@ struct SalesPeriodTests {
     @Test func aDayBreaksDownNoFurther() {
         #expect(SalesPeriods.finerPeriods(of: .daily(year: 2026, month: 7, day: 5), upTo: Self.midJuly).isEmpty)
     }
+
+    /// A period Apple has had ample time to publish. Past this point an absent
+    /// report means the period was empty, not late.
+    @Test func aLongClosedPeriodIsSettled() {
+        #expect(SalesPeriods.isSettled(.yearly(2023), on: Self.midJuly))
+        #expect(SalesPeriods.isSettled(.monthly(year: 2026, month: 5), on: Self.midJuly))
+        #expect(SalesPeriods.isSettled(.daily(year: 2026, month: 7, day: 1), on: Self.midJuly))
+    }
+
+    /// The just-ended period is exactly the one Apple is still working on, and the
+    /// one the fallback exists for.
+    @Test func aRecentlyClosedPeriodIsNotSettled() {
+        #expect(!SalesPeriods.isSettled(.monthly(year: 2026, month: 6), on: Self.date("2026-07-02T12:00:00Z")))
+        #expect(!SalesPeriods.isSettled(.daily(year: 2026, month: 7, day: 29), on: Self.midJuly))
+        #expect(!SalesPeriods.isSettled(.yearly(2025), on: Self.date("2026-01-03T12:00:00Z")))
+    }
+
+    /// An open period is never settled, however the arithmetic falls out.
+    @Test func anOpenPeriodIsNeverSettled() {
+        #expect(!SalesPeriods.isSettled(.yearly(2026), on: Self.midJuly))
+        #expect(!SalesPeriods.isSettled(.monthly(year: 2026, month: 7), on: Self.midJuly))
+        #expect(!SalesPeriods.isSettled(.daily(year: 2026, month: 7, day: 30), on: Self.midJuly))
+    }
 }

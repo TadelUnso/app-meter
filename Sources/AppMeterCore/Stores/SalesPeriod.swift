@@ -137,4 +137,45 @@ public enum SalesPeriods {
                 || (reportYear == year && reportMonth == month && reportDay < day)
         }
     }
+
+    /// How long after a period ends Apple may still be publishing its report.
+    ///
+    /// Ten days is comfortably past the few days a monthly summary actually takes,
+    /// and the cost of being generous is one wasted request per period per refresh
+    /// until it elapses — against the cost of being mean, which is a month of
+    /// installs cached as zero.
+    public static let publicationLag: TimeInterval = 10 * 24 * 60 * 60
+
+    /// Whether a period is old enough that a missing report means an empty period
+    /// rather than a late one.
+    ///
+    /// This is what bounds the fallback. Without it a year before the app existed
+    /// answers 404, expands into twelve months, each of those into thirty-odd days,
+    /// and none of them are ever remembered — so the whole fan-out runs again on
+    /// every refresh.
+    public static func isSettled(_ period: SalesPeriod, on today: Date) -> Bool {
+        guard isClosed(period, on: today), let end = endOfPeriod(period) else { return false }
+        return today.timeIntervalSince(end) > publicationLag
+    }
+
+    /// The first instant after the period's last day.
+    private static func endOfPeriod(_ period: SalesPeriod) -> Date? {
+        var components = DateComponents()
+        switch period {
+        case let .yearly(year):
+            components.year = year + 1
+            components.month = 1
+            components.day = 1
+        case let .monthly(year, month):
+            components.year = month == 12 ? year + 1 : year
+            components.month = month == 12 ? 1 : month + 1
+            components.day = 1
+        case let .daily(year, month, day):
+            guard let start = calendar.date(from: DateComponents(year: year, month: month, day: day)) else {
+                return nil
+            }
+            return calendar.date(byAdding: .day, value: 1, to: start)
+        }
+        return calendar.date(from: components)
+    }
 }

@@ -71,7 +71,14 @@ public struct AppleInstallsService: Sendable {
                 // would seal a month that is merely late at nothing forever, so
                 // it is not cached — the finer reports are asked instead.
                 guard let report = try await client.report(for: period) else {
-                    queue.append(contentsOf: SalesPeriods.finerPeriods(of: period, upTo: now))
+                    if SalesPeriods.isSettled(period, on: now) {
+                        // Long closed and still absent: the period was empty. Remembering
+                        // that is what stops the fallback below from running again every
+                        // refresh.
+                        await history.store([:], titles: [:], for: period)
+                    } else {
+                        queue.append(contentsOf: SalesPeriods.finerPeriods(of: period, upTo: now))
+                    }
                     continue
                 }
 
