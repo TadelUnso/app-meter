@@ -249,6 +249,10 @@ private struct StoreTile: View {
 
             // Rules the figure off from the movement below it, as in the
             // reference mockup. Only this layout is roomy enough to carry it.
+            //
+            // Height is deliberately left unscaled — a hairline is defined by
+            // being a single device pixel wide; scaling it would make it a
+            // faint grey bar at large panel sizes instead of a crisp rule.
             Rectangle()
                 .fill(Theme.track)
                 .frame(height: 1)

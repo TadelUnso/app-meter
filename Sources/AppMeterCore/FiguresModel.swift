@@ -57,6 +57,9 @@ public final class FiguresModel: ObservableObject {
                 ],
             ])
             isLoading = false
+            // lastRefresh stays nil: there is no poll behind these fixture
+            // figures, so there is nothing true to date them with — the
+            // freshness line simply does not appear on screenshots.
             return
         }
 

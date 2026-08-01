@@ -112,8 +112,17 @@ public struct WidgetRootView: View {
     /// Wrapped in a periodic timeline so the text itself goes stale — without
     /// it, "just now" would sit there unchanged until the next poll, up to
     /// fifteen minutes later.
+    ///
+    /// Anchored to `lastRefresh`, not `.now`: this is a function, re-run on
+    /// every body evaluation of `WidgetRootView` (rows, problems, isLoading,
+    /// any `@AppStorage` — all of them redraw it), and `.now` would rebuild
+    /// the schedule with a fresh anchor each time, restarting the once-a-
+    /// minute cadence instead of continuing it. `lastRefresh` does not move
+    /// between polls, so the schedule stays put, and its ticks land on the
+    /// minute boundaries after the refresh — which is what the reading is
+    /// counting anyway.
     private func freshness(since lastRefresh: Date) -> some View {
-        TimelineView(.periodic(from: .now, by: 60)) { context in
+        TimelineView(.periodic(from: lastRefresh, by: 60)) { context in
             Text(Fmt.age(lastRefresh, now: context.date))
                 .font(Theme.caption(scale: scale))
                 .foregroundStyle(Theme.dim)
