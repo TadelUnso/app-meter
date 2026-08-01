@@ -130,6 +130,7 @@ private struct StoreLine: View {
                 .font(Theme.label(scale: scale))
                 .foregroundStyle(figures.store == .appStore ? Theme.appStore : Theme.googlePlay)
                 .frame(width: 66 * scale, alignment: .leading)
+                .lineLimit(1)
 
             Text(Fmt.installs(figures.lifetime))
                 .font(Theme.value(scale: scale * 0.55))
@@ -141,6 +142,8 @@ private struct StoreLine: View {
                 Text(Fmt.delta(figures.today))
                     .font(Theme.delta(scale: scale))
                     .foregroundStyle(Theme.accent)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
             }
         }
         .help("Figures for \(Fmt.day(figures.asOf))")
