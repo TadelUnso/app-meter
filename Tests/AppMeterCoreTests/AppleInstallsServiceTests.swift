@@ -174,10 +174,16 @@ struct AppleInstallsServiceTests {
         #expect(await source.requestCount(for: .daily(year: 2026, month: 1, day: 15)) == 1)
     }
 
-    /// A year before the app existed answers 404 forever. Expanding it into months
-    /// and days on every refresh is how a young account came to cost a thousand
-    /// requests an hour, so a settled period's absence is remembered.
-    @Test func aLongEmptyPeriodIsAskedForOnceAndThenRemembered() async throws {
+    /// A year before the app existed answers 404 forever. Only a day's absence is
+    /// ever cached — a year or a month is never remembered as empty, because a
+    /// wrong guess there is not a wasted request but a real period's figures
+    /// frozen at zero for good. So the request count does not fall to almost
+    /// nothing the way a coarser cache would: it falls once, from the first
+    /// refresh's fan-out down to whatever every year and month cost (they are
+    /// asked again on every single refresh, forever) plus the handful of days
+    /// too recent to be settled — and then it holds steady. A shrinking-forever
+    /// count would mean the cache was still growing; a flat one means it isn't.
+    @Test func aLongEmptyPeriodSettlesToASteadyRequestCount() async throws {
         let source = StubSource([:])
         let service = AppleInstallsService(client: source, history: Self.store())
 
@@ -185,11 +191,21 @@ struct AppleInstallsServiceTests {
         let afterFirst = await source.requested.count
         _ = try await service.installs(now: Self.secondOfJanuary)
         let afterSecond = await source.requested.count
+        _ = try await service.installs(now: Self.secondOfJanuary)
+        let afterThird = await source.requested.count
 
-        // The second pass re-reads only what is still open: the current year and
-        // the days of the current month.
-        #expect(afterSecond - afterFirst < afterFirst)
-        #expect(await source.requestCount(for: .yearly(2024)) == 1)
+        // Steady state for this fixture: 3 years + 36 months (2023-2025, never
+        // cached) + 4 days (2 January's own two days, still open or too fresh to
+        // be settled, plus the last two days of December 2025, also too fresh
+        // under a 3-day lag measured from 2 January).
+        let secondRefreshCost = afterSecond - afterFirst
+        let thirdRefreshCost = afterThird - afterSecond
+        #expect(secondRefreshCost == 43)
+        #expect(thirdRefreshCost == secondRefreshCost)
+
+        // A settled day, once fetched, is never asked again — the caching this
+        // task is actually about.
+        #expect(await source.requestCount(for: .daily(year: 2023, month: 1, day: 1)) == 1)
     }
 
     @Test func reportsNothingWhenNoPeriodHasFigures() async throws {

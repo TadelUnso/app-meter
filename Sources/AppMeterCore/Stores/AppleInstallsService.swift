@@ -71,10 +71,15 @@ public struct AppleInstallsService: Sendable {
                 // would seal a month that is merely late at nothing forever, so
                 // it is not cached — the finer reports are asked instead.
                 guard let report = try await client.report(for: period) else {
-                    if SalesPeriods.isSettled(period, on: now) {
-                        // Long closed and still absent: the period was empty. Remembering
-                        // that is what stops the fallback below from running again every
-                        // refresh.
+                    // Only a day's absence is ever cached. A day's report is published
+                    // within about a day, so a settled day's 404 is trustworthy — it
+                    // genuinely had nothing. A month or a year is a bigger aggregation
+                    // that can take longer to publish, and guessing wrong there is not
+                    // a wasted request but a real period's figures frozen at zero
+                    // forever, so those always fall through to the finer periods
+                    // instead; the fallback bottoms out at the days either way, and
+                    // those are the ones this remembers.
+                    if case .daily = period, SalesPeriods.isSettled(period, on: now) {
                         await history.store([:], titles: [:], for: period)
                     } else {
                         queue.append(contentsOf: SalesPeriods.finerPeriods(of: period, upTo: now))

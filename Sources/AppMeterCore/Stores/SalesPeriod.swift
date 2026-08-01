@@ -138,24 +138,29 @@ public enum SalesPeriods {
         }
     }
 
-    /// How long after a period ends Apple may still be publishing its report.
+    /// How long after a day ends Apple may still be publishing its report.
     ///
-    /// Ten days is comfortably past the few days a monthly summary actually takes,
-    /// and the cost of being generous is one wasted request per period per refresh
-    /// until it elapses — against the cost of being mean, which is a month of
-    /// installs cached as zero.
-    public static let publicationLag: TimeInterval = 10 * 24 * 60 * 60
+    /// Deliberately sized for a day, not a coarser period: a day's report is
+    /// published within about a day, so three days of margin is a safe bet, not
+    /// a guess. The same guess for a month or a year would be a real gamble —
+    /// an unsettled month re-expands into up to 31 requests every refresh, an
+    /// unsettled year into twelve months plus their days, and guessing wrong
+    /// there does not cost "one wasted request." It caches a real period's
+    /// figures as zero, permanently: nothing ever re-checks or expires a stored
+    /// period, so a wrong guess is silent, unrecoverable data loss. That is why
+    /// only a day's absence is ever cached — see the call site.
+    public static let dailyPublicationLag: TimeInterval = 3 * 24 * 60 * 60
 
     /// Whether a period is old enough that a missing report means an empty period
     /// rather than a late one.
     ///
-    /// This is what bounds the fallback. Without it a year before the app existed
-    /// answers 404, expands into twelve months, each of those into thirty-odd days,
-    /// and none of them are ever remembered — so the whole fan-out runs again on
-    /// every refresh.
+    /// Measured against `dailyPublicationLag`, so this is only trustworthy at
+    /// the granularity that constant was sized for: a day. Callers must not use
+    /// it to decide whether a month's or a year's absence is safe to cache — a
+    /// coarser report can legitimately still be missing well past three days.
     public static func isSettled(_ period: SalesPeriod, on today: Date) -> Bool {
         guard isClosed(period, on: today), let end = endOfPeriod(period) else { return false }
-        return today.timeIntervalSince(end) > publicationLag
+        return today.timeIntervalSince(end) > dailyPublicationLag
     }
 
     /// The first instant after the period's last day.
