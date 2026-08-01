@@ -23,9 +23,10 @@ public struct WidgetRootView: View {
     }
 
     /// Everything scales from the 520 pt design width, so the composition is
-    /// identical at every panel size.
+    /// identical at every panel size at or above it. Narrower than that the
+    /// scale holds at 1 and the panel tightens instead of zooming out.
     private var width: CGFloat { WidgetSettings.clampWidth(widgetWidth) }
-    private var scale: Double { width / WidgetSettings.defaultWidth }
+    private var scale: Double { WidgetSettings.scale(forWidth: widgetWidth) }
     private var pad: CGFloat { 14 * scale }
     private var gap: CGFloat { 12 * scale }
 
