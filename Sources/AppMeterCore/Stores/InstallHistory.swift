@@ -8,15 +8,34 @@ import Foundation
 /// A period that turned out to have no report is remembered as zero, so a quiet
 /// month is not re-requested forever.
 public struct InstallHistory: Codable, Equatable, Sendable {
+    /// Bumped by a future release that needs to invalidate this file rather
+    /// than silently inherit a shape it can no longer make sense of. Every
+    /// file on disk today predates this field, so it must decode as if it
+    /// said 1 rather than fail to load.
+    public private(set) var version: Int
     /// Period cache key → Apple identifier → first downloads.
     public private(set) var periods: [String: [String: Int]]
     /// Apple identifier → the title last seen for it. Kept apart from the
     /// counts because a rename must not invalidate a closed period.
     public private(set) var titles: [String: String]
 
-    public init(periods: [String: [String: Int]] = [:], titles: [String: String] = [:]) {
+    public init(periods: [String: [String: Int]] = [:], titles: [String: String] = [:], version: Int = 1) {
+        self.version = version
         self.periods = periods
         self.titles = titles
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case version, periods, titles
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Synthesized Decodable would reject a file written before this field
+        // existed instead of defaulting it, so the container is read by hand.
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        periods = try container.decode([String: [String: Int]].self, forKey: .periods)
+        titles = try container.decode([String: String].self, forKey: .titles)
     }
 
     public func units(for period: SalesPeriod) -> [String: Int]? {

@@ -120,7 +120,10 @@ can be filed away with the rest of your secrets and removed from disk.
 The non-secret half — issuer id, key id, vendor number, bucket, refresh
 interval — is stored as ordinary preferences in
 `~/Library/Preferences/com.sbezbabnykh.app-meter.plist`. Apple's report history
-cache lives in `~/Library/Application Support/App Meter/`.
+cache lives in `~/Library/Application Support/App Meter/`. Deleting that file
+makes App Meter rebuild its history from scratch on the next refresh — worth
+doing if a day's figures look wrong and stay wrong, since a day that settled
+with no report cached is never re-checked on its own.
 
 ## Freshness
 
