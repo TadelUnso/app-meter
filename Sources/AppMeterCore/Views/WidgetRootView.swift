@@ -13,7 +13,6 @@ public struct WidgetRootView: View {
 
     @AppStorage(WidgetSettings.widgetWidthKey) private var widgetWidth = WidgetSettings.defaultWidth
     @AppStorage(WidgetSettings.positionLockedKey) private var positionLocked = false
-    @AppStorage(WidgetSettings.widgetVisibleKey) private var widgetVisible = true
     @AppStorage(WidgetSettings.refreshIntervalKey) private var refreshInterval = WidgetSettings.defaultRefreshInterval
 
     @StateObject private var model = FiguresModel()
@@ -82,8 +81,6 @@ public struct WidgetRootView: View {
             KofiButton(scale: scale)
 
             HStack(spacing: 6 * scale) {
-                TitleGlyphView(scale: scale)
-
                 Text(LayoutMode.title(for: model.rows))
                     .font(Theme.title(scale: scale))
                     .foregroundStyle(Theme.text)
@@ -103,14 +100,6 @@ public struct WidgetRootView: View {
                     .help(positionLocked
                         ? "Position and size are locked — click to unlock"
                         : "Click to lock the widget position and size")
-
-                    Button {
-                        widgetVisible = false
-                    } label: {
-                        controlIcon("eye.slash", tint: Theme.dim)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Hide widget — bring it back from the menu bar icon")
                 }
             }
         }
