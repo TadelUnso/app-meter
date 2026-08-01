@@ -61,4 +61,17 @@ struct FiguresModelTests {
     @Test func emptyStoresGroupToNothing() {
         #expect(FiguresModel.rows([:]).isEmpty)
     }
+
+    /// Two apps can share a name. Without a tiebreaker their order comes out of
+    /// a hash and changes between launches, so the panel reshuffles itself for
+    /// no reason the user can see.
+    @Test func rowsWithTheSameNameAreOrderedByIdentifier() {
+        let rows = FiguresModel.rows([
+            .appStore: [
+                Self.app("Finder", .appStore, id: "com.zebra.finder"),
+                Self.app("Finder", .appStore, id: "com.acme.finder"),
+            ],
+        ])
+        #expect(rows.map(\.id) == ["com.acme.finder", "com.zebra.finder"])
+    }
 }

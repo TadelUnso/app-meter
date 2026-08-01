@@ -124,6 +124,10 @@ public final class FiguresModel: ObservableObject {
                 googlePlay: googlePlay[id]
             )
         }
-        .sorted { $0.name.localizedLowercase < $1.name.localizedLowercase }
+        // Two apps can share a name (same developer, two accounts; a rename
+        // in progress). Falling back to the id — unique by construction —
+        // keeps their order fixed, instead of the process-seeded hash order
+        // Set/union would otherwise leave it in.
+        .sorted { ($0.name.localizedLowercase, $0.id) < ($1.name.localizedLowercase, $1.id) }
     }
 }
