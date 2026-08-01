@@ -83,6 +83,42 @@ public enum SalesPeriods {
         return periods
     }
 
+    /// The same stretch of time one step finer: a year is its months, a month
+    /// its days, a day nothing.
+    ///
+    /// This is the answer to a coarse report Apple has not published yet. The
+    /// monthly summary of a month arrives some days into the next one, and the
+    /// yearly summary of a year some days into the next — until then the finer
+    /// reports are the only ones that cover that stretch. Nothing past `today`,
+    /// which has no report of any frequency.
+    public static func finerPeriods(of period: SalesPeriod, upTo today: Date) -> [SalesPeriod] {
+        let parts = calendar.dateComponents([.year, .month, .day], from: today)
+        guard let thisYear = parts.year, let thisMonth = parts.month, let thisDay = parts.day else { return [] }
+
+        switch period {
+        case let .yearly(year):
+            guard year <= thisYear else { return [] }
+            let lastMonth = year == thisYear ? thisMonth : 12
+            return (1...lastMonth).map { .monthly(year: year, month: $0) }
+
+        case let .monthly(year, month):
+            guard year < thisYear || (year == thisYear && month <= thisMonth) else { return [] }
+            let lastDay: Int
+            if year == thisYear, month == thisMonth {
+                lastDay = thisDay
+            } else {
+                guard let first = calendar.date(from: DateComponents(year: year, month: month, day: 1)),
+                      let range = calendar.range(of: .day, in: .month, for: first)
+                else { return [] }
+                lastDay = range.count
+            }
+            return (1...lastDay).map { .daily(year: year, month: month, day: $0) }
+
+        case .daily:
+            return []
+        }
+    }
+
     /// A period is closed once the time it covers is over — and a closed
     /// period's figures never change again, which is what makes them safe to
     /// cache forever. The current day, month and year stay open.

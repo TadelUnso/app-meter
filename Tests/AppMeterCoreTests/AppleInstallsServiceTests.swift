@@ -123,6 +123,46 @@ struct AppleInstallsServiceTests {
         #expect(second[0].lifetime == 42)
     }
 
+    private static let thirdOfFebruary = date("2026-02-03T12:00:00Z")
+
+    /// The month Apple has not summarised yet. It happens every first of the
+    /// month: the day the monthly report becomes the plan's way of covering
+    /// January is the day before Apple publishes it. Falling back to the days
+    /// of that month is what keeps the lifetime total from collapsing.
+    @Test func aMonthWithNoReportYetIsCoveredByItsDays() async throws {
+        let source = StubSource([
+            // No .monthly(2026, 1) — Apple answers 404 for it on 3 February.
+            .daily(year: 2026, month: 1, day: 15): Self.report(units: 12),
+            .daily(year: 2026, month: 2, day: 2): Self.report(units: 5),
+        ])
+
+        let figures = try await AppleInstallsService(client: source, history: Self.store())
+            .figures(now: Self.thirdOfFebruary)
+
+        #expect(figures.count == 1)
+        #expect(figures[0].lifetime == 17)
+        // And the newest day is still February's, not the January day fetched
+        // after it.
+        #expect(figures[0].today == 5)
+        #expect(figures[0].asOf == Self.date("2026-02-02T00:00:00Z"))
+    }
+
+    /// "Apple has no report for this period" and "this period had nothing in
+    /// it" arrive as the same 404. Remembering the first as zero is what froze
+    /// a whole month's figures at nothing.
+    @Test func aPeriodWithNoReportIsNotRememberedAsZero() async throws {
+        let source = StubSource([.daily(year: 2026, month: 1, day: 15): Self.report(units: 12)])
+        let history = Self.store()
+        let service = AppleInstallsService(client: source, history: history)
+
+        _ = try await service.figures(now: Self.thirdOfFebruary)
+        _ = try await service.figures(now: Self.thirdOfFebruary)
+
+        #expect(await source.requestCount(for: .monthly(year: 2026, month: 1)) == 2)
+        // The days it fell back to are real answers, so those are cached.
+        #expect(await source.requestCount(for: .daily(year: 2026, month: 1, day: 15)) == 1)
+    }
+
     @Test func reportsNothingWhenNoPeriodHasFigures() async throws {
         let figures = try await AppleInstallsService(client: StubSource([:]), history: Self.store())
             .figures(now: Self.secondOfJanuary)

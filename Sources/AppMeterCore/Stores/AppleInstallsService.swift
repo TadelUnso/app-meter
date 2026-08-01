@@ -32,14 +32,32 @@ public struct AppleInstallsService: Sendable {
         var titles = await history.current.titles
         var latestDay: (date: Date, units: [String: Int])?
 
-        for period in SalesPeriods.lifetimePlan(upTo: now) {
+        // A queue rather than a plain loop: a coarse period Apple has not
+        // published yet is replaced here by the finer ones covering the same
+        // stretch, and those join the same pass.
+        var queue = SalesPeriods.lifetimePlan(upTo: now)
+        var position = 0
+
+        while position < queue.count {
+            let period = queue[position]
+            position += 1
+
             let closed = SalesPeriods.isClosed(period, on: now)
             var units: [String: Int]
 
             if closed, let cached = await history.units(for: period) {
                 units = cached
             } else {
-                let downloads = try await client.report(for: period)?.firstDownloads() ?? [:]
+                // Nil is Apple's 404, which means either "nothing happened" or
+                // "not published yet" and never says which. Caching it as zero
+                // would seal a month that is merely late at nothing forever, so
+                // it is not cached — the finer reports are asked instead.
+                guard let report = try await client.report(for: period) else {
+                    queue.append(contentsOf: SalesPeriods.finerPeriods(of: period, upTo: now))
+                    continue
+                }
+
+                let downloads = report.firstDownloads()
                 units = downloads.mapValues(\.units)
 
                 let names = downloads.mapValues(\.title)
@@ -58,9 +76,12 @@ public struct AppleInstallsService: Sendable {
 
             // The newest daily report that had downloads in it is what "today"
             // means here: Apple publishes a day or so behind, so that report is
-            // the newest news there is.
+            // the newest news there is. Compared by date rather than taken as
+            // the last one seen, because a fallback appends older days after
+            // newer ones.
             if case let .daily(year, month, day) = period, !units.isEmpty,
-               let date = SalesPeriods.calendar.date(from: DateComponents(year: year, month: month, day: day)) {
+               let date = SalesPeriods.calendar.date(from: DateComponents(year: year, month: month, day: day)),
+               date > (latestDay?.date ?? .distantPast) {
                 latestDay = (date, units)
             }
         }

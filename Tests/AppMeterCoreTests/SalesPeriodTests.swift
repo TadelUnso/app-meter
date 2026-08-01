@@ -78,4 +78,31 @@ struct SalesPeriodTests {
     @Test func todayIsNotClosed() {
         #expect(!SalesPeriods.isClosed(.daily(year: 2026, month: 7, day: 30), on: Self.midJuly))
     }
+
+    /// A month Apple has not summarised yet is covered by its days instead.
+    @Test func aMonthBreaksDownIntoItsDays() {
+        let days = SalesPeriods.finerPeriods(of: .monthly(year: 2026, month: 6), upTo: Self.midJuly)
+        #expect(days.count == 30)
+        #expect(days.first == .daily(year: 2026, month: 6, day: 1))
+        #expect(days.last == .daily(year: 2026, month: 6, day: 30))
+    }
+
+    /// The month in progress stops at today: later days have no report at all.
+    @Test func theCurrentMonthBreaksDownOnlyAsFarAsToday() {
+        let days = SalesPeriods.finerPeriods(of: .monthly(year: 2026, month: 7), upTo: Self.midJuly)
+        #expect(days.count == 30)
+        #expect(days.last == .daily(year: 2026, month: 7, day: 30))
+    }
+
+    /// Same again a level up, for the first days of January.
+    @Test func aYearBreaksDownIntoItsMonths() {
+        #expect(SalesPeriods.finerPeriods(of: .yearly(2025), upTo: Self.midJuly).count == 12)
+        #expect(SalesPeriods.finerPeriods(of: .yearly(2026), upTo: Self.midJuly)
+            == (1...7).map { .monthly(year: 2026, month: $0) })
+    }
+
+    /// A day is as fine as Apple's reports go.
+    @Test func aDayBreaksDownNoFurther() {
+        #expect(SalesPeriods.finerPeriods(of: .daily(year: 2026, month: 7, day: 5), upTo: Self.midJuly).isEmpty)
+    }
 }
