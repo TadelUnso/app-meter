@@ -33,8 +33,11 @@ public struct WidgetRootView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: gap) {
             titleBar
+            // Stopgap: FiguresView still takes the old flat [AppFigures] shape.
+            // Flattening rows back out keeps the build green until Task 4
+            // rewrites the view to take rows directly.
             FiguresView(
-                figures: model.figures,
+                figures: model.rows.compactMap(\.appStore) + model.rows.compactMap(\.googlePlay),
                 problems: model.problems,
                 isLoading: model.isLoading,
                 scale: scale

@@ -2,41 +2,63 @@ import Foundation
 import Testing
 @testable import AppMeterCore
 
-@Suite("Figures merging")
+@Suite("Figures grouping")
 struct FiguresModelTests {
-    private static func app(_ name: String, _ store: Store, id: String? = nil) -> AppFigures {
+    private static func app(_ name: String, _ store: Store, id: String, lifetime: Int = 1, today: Int = 0) -> AppFigures {
         AppFigures(
-            id: id ?? "\(name)-\(store.rawValue)",
+            id: id,
             name: name,
             store: store,
-            lifetime: 1,
-            today: 0,
+            lifetime: lifetime,
+            today: today,
             asOf: Date(timeIntervalSince1970: 0)
         )
     }
 
-    /// The same app on both stores must sit together, App Store first — that
-    /// adjacency is what makes the store dots readable as a pair.
-    @Test func groupsTheSameAppAcrossStores() {
-        let merged = FiguresModel.merged([
-            .appStore: [Self.app("Finder", .appStore)],
-            .googlePlay: [Self.app("Finder", .googlePlay), Self.app("Another", .googlePlay)],
+    /// The bundle id and the package are the same string for the same app, and
+    /// that is what puts both stores in one row.
+    @Test func oneAppOnBothStoresIsOneRow() {
+        let rows = FiguresModel.rows([
+            .appStore: [Self.app("Finder", .appStore, id: "com.example.finder", lifetime: 10, today: 2)],
+            .googlePlay: [Self.app("com.example.finder", .googlePlay, id: "com.example.finder", lifetime: 5, today: 1)],
         ])
 
-        #expect(merged.map(\.name) == ["Another", "Finder", "Finder"])
-        #expect(merged[1].store == .appStore)
-        #expect(merged[2].store == .googlePlay)
+        #expect(rows.count == 1)
+        #expect(rows[0].name == "Finder")
+        #expect(rows[0].lifetime == 15)
+        #expect(rows[0].today == 3)
+    }
+
+    /// Different identifiers are different apps, however alike the names look.
+    @Test func differentIdentifiersStayApart() {
+        let rows = FiguresModel.rows([
+            .appStore: [Self.app("Finder", .appStore, id: "com.example.finder")],
+            .googlePlay: [Self.app("Finder", .googlePlay, id: "com.other.finder")],
+        ])
+        #expect(rows.count == 2)
+    }
+
+    /// The App Store name is the human one; a Play-only row has nothing better
+    /// than its package to show.
+    @Test func theNameComesFromTheAppStoreWhenThereIsOne() {
+        let rows = FiguresModel.rows([
+            .googlePlay: [Self.app("com.example.app", .googlePlay, id: "com.example.app")],
+        ])
+        #expect(rows[0].name == "com.example.app")
     }
 
     /// Case must not scatter the sort: "app one" and "App Two" are neighbours.
-    @Test func sortsWithoutRegardToCase() {
-        let merged = FiguresModel.merged([
-            .appStore: [Self.app("app one", .appStore), Self.app("App Two", .appStore)],
+    @Test func sortsByNameWithoutRegardToCase() {
+        let rows = FiguresModel.rows([
+            .appStore: [
+                Self.app("App Two", .appStore, id: "two"),
+                Self.app("app one", .appStore, id: "one"),
+            ],
         ])
-        #expect(merged.map(\.name) == ["app one", "App Two"])
+        #expect(rows.map(\.name) == ["app one", "App Two"])
     }
 
-    @Test func emptyStoresMergeToNothing() {
-        #expect(FiguresModel.merged([:]).isEmpty)
+    @Test func emptyStoresGroupToNothing() {
+        #expect(FiguresModel.rows([:]).isEmpty)
     }
 }

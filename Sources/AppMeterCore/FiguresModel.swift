@@ -10,9 +10,9 @@ import SwiftUI
 /// never blanks the other side's numbers.
 @MainActor
 public final class FiguresModel: ObservableObject {
-    /// Everything the panel renders, both stores together, stable order:
-    /// grouped by app name so the same app's two store cards sit side by side.
-    @Published public private(set) var figures: [AppFigures] = []
+    /// Everything the panel renders: one row per app, both stores grouped
+    /// inside it, sorted by name.
+    @Published public private(set) var rows: [AppRow] = []
 
     /// The most recent refresh's problems, one line per store, empty when all
     /// is well. Shown small under the cards, never in place of them.
@@ -40,14 +40,14 @@ public final class FiguresModel: ObservableObject {
 
         if Self.isDemo {
             let day = Date(timeIntervalSinceNow: -86_400)
-            figures = Self.merged([
+            rows = Self.rows([
                 .appStore: [
-                    AppFigures(id: "1", name: "Lantern", store: .appStore, lifetime: 48_213, today: 316, asOf: day),
-                    AppFigures(id: "2", name: "Tidepool", store: .appStore, lifetime: 7_492, today: 0, asOf: day),
+                    AppFigures(id: "com.demo.lantern", name: "Lantern", store: .appStore, lifetime: 48_213, today: 316, asOf: day),
+                    AppFigures(id: "com.demo.tidepool", name: "Tidepool", store: .appStore, lifetime: 7_492, today: 0, asOf: day),
                 ],
                 .googlePlay: [
-                    AppFigures(id: "3", name: "Lantern", store: .googlePlay, lifetime: 61_840, today: 428, asOf: day),
-                    AppFigures(id: "4", name: "Tidepool", store: .googlePlay, lifetime: 12_066, today: 57, asOf: day),
+                    AppFigures(id: "com.demo.lantern", name: "Lantern", store: .googlePlay, lifetime: 61_840, today: 428, asOf: day),
+                    AppFigures(id: "com.demo.tidepool", name: "Tidepool", store: .googlePlay, lifetime: 12_066, today: 57, asOf: day),
                 ],
             ])
             isLoading = false
@@ -72,7 +72,7 @@ public final class FiguresModel: ObservableObject {
 
     public func refresh() async {
         NSLog("[model] refresh started")
-        defer { NSLog("[model] refresh finished: %d figure(s), %d problem(s)", figures.count, problems.count) }
+        defer { NSLog("[model] refresh finished: %d row(s), %d problem(s)", rows.count, problems.count) }
         var newProblems: [String] = []
 
         if let account = StoreAccounts.appStoreConnect() {
@@ -101,17 +101,29 @@ public final class FiguresModel: ObservableObject {
             byStore[.googlePlay] = nil
         }
 
-        figures = Self.merged(byStore)
+        rows = Self.rows(byStore)
         problems = newProblems
         isLoading = false
     }
 
-    /// Both stores' figures in one list: sorted by name so an app published on
-    /// both sits together, the store dot telling the two cards apart.
+    /// Both stores' figures as one row per app, sorted by name.
     /// Pure, hence nonisolated — and testable without an actor hop.
-    nonisolated static func merged(_ byStore: [Store: [AppFigures]]) -> [AppFigures] {
-        byStore.values.flatMap { $0 }.sorted {
-            ($0.name.localizedLowercase, $0.store.rawValue) < ($1.name.localizedLowercase, $1.store.rawValue)
+    nonisolated static func rows(_ byStore: [Store: [AppFigures]]) -> [AppRow] {
+        var appStore: [String: AppFigures] = [:]
+        var googlePlay: [String: AppFigures] = [:]
+
+        for figures in byStore[.appStore] ?? [] { appStore[figures.id] = figures }
+        for figures in byStore[.googlePlay] ?? [] { googlePlay[figures.id] = figures }
+
+        return Set(appStore.keys).union(googlePlay.keys).map { id in
+            AppRow(
+                id: id,
+                // The App Store name is a real title; Play only ever knows the package.
+                name: appStore[id]?.name ?? googlePlay[id]?.name ?? id,
+                appStore: appStore[id],
+                googlePlay: googlePlay[id]
+            )
         }
+        .sorted { $0.name.localizedLowercase < $1.name.localizedLowercase }
     }
 }
