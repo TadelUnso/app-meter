@@ -18,16 +18,23 @@ the reports Apple and Google produce for you, using credentials you supply.
 
 ## Features
 
-- **Lifetime installs per app** — both figures are reconstructed by summing
-  daily install counts across report history: Apple's counts first-time
-  downloads (updates and redownloads excluded) and is cached locally; Google's
-  is summed from every monthly Play statistics export, since the export's own
+- **Lifetime installs per app** — Apple's total is the sum of the whole
+  reporting plan: yearly reports where they exist, falling back to monthly and
+  then daily ones for the stretch not yet covered by a closed year or month.
+  Apple counts first-time downloads only (updates and redownloads excluded),
+  and a closed period is cached locally and never re-fetched. Google's total is
+  summed from every monthly Play statistics export, since the export's own
   running total has read zero since a July 2026 format change
 - **Today's growth** — the most recent day each store has reported, shown as a
-  green delta next to the total
+  delta: beside the total in the grid and rows layouts, under a rule below it
+  when a single app fills the panel
 - **Adaptive layout** — one app fills the panel, two to four share a grid, five
   or more collapse into rows. A written label tells the stores apart: "APP
   STORE" or "GOOGLE PLAY", each in its own colour
+- **Freshness footer** — how long ago the figures were last refreshed ("just
+  now", "25 min ago"), so a stale panel is never mistaken for a current one
+- **Combined total** — when the panel is showing a single app that is on both
+  stores, a line under the figures adds their totals and today's growth together
 - Either store works on its own — configure only the one you publish to
 - Errors ride under the figures, never in place of them: one store failing does
   not blank the other's numbers

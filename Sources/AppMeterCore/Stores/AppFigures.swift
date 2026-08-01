@@ -23,9 +23,12 @@ public struct AppFigures: Equatable, Sendable, Identifiable {
 
     /// The day `today` covers. Both stores report a day or more behind, so this
     /// is not necessarily today's date, and the panel says which day it means.
-    public let asOf: Date
+    /// Nil when no daily report has ever had anything in it for this app — a
+    /// lifetime total with no known day to date it by, which is honest and not
+    /// the same as today.
+    public let asOf: Date?
 
-    public init(id: String, name: String, store: Store, lifetime: Int, today: Int, asOf: Date) {
+    public init(id: String, name: String, store: Store, lifetime: Int, today: Int, asOf: Date?) {
         self.id = id
         self.name = name
         self.store = store

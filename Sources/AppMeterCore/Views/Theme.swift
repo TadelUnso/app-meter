@@ -12,8 +12,8 @@ public enum Theme {
     public static let warning = Color(red: 0.898, green: 0.784, blue: 0.565)
     public static let danger = Color(red: 0.906, green: 0.510, blue: 0.518)
 
-    /// The two stores get a colour each, used only for the dot beside their
-    /// label. Deliberately not the stores' own brand colours — these are picked
+    /// The two stores get a colour each, used to tint their written label.
+    /// Deliberately not the stores' own brand colours — these are picked
     /// to sit in the same pastel family as the rest of the panel.
     public static let appStore = Color(red: 0.706, green: 0.616, blue: 0.902)
     public static let googlePlay = Color(red: 0.651, green: 0.820, blue: 0.537)
@@ -38,5 +38,24 @@ public enum Theme {
 
     public static func caption(scale: Double) -> Font {
         .system(size: 10 * scale, weight: .medium).monospacedDigit()
+    }
+}
+
+extension Store {
+    /// The panel's name for this store, written wherever a figure needs to say
+    /// which store it is from.
+    public var label: String {
+        switch self {
+        case .appStore: "APP STORE"
+        case .googlePlay: "GOOGLE PLAY"
+        }
+    }
+
+    /// The colour `label` is tinted.
+    public var tint: Color {
+        switch self {
+        case .appStore: Theme.appStore
+        case .googlePlay: Theme.googlePlay
+        }
     }
 }

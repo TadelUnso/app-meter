@@ -115,6 +115,19 @@ struct AppleInstallsServiceTests {
         #expect(await source.requestCount(for: .yearly(2025)) == 1)
     }
 
+    /// A lifetime total with no daily report ever seen — the yearly total is
+    /// real, but no day is known to date it by. Falling back to `now` would
+    /// claim a freshness the figures do not have, under a tile that exists to
+    /// say which day they are really from.
+    @Test func asOfIsNilWhenNoDailyReportWasEverSeen() async throws {
+        let source = StubSource([.yearly(2025): Self.report(units: 40)])
+
+        let figures = try await AppleInstallsService(client: source, history: Self.store())
+            .installs(now: Self.secondOfJanuary).figures
+
+        #expect(figures[0].asOf == nil)
+    }
+
     /// And the other half of it: today's report is still being written, so it
     /// must be re-read every time rather than remembered.
     @Test func theOpenDayIsFetchedEveryTime() async throws {

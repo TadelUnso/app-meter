@@ -22,7 +22,6 @@ struct PlayInstallsReportTests {
     @Test func readsAUTF16FileWithABOM() throws {
         let report = try PlayInstallsReport(csv: Self.utf16(Self.csv))
         #expect(report.days.count == 3)
-        #expect(report.days.first?.packageName == "com.tadelunso.finder")
     }
 
     @Test func readsBigEndianToo() throws {
@@ -46,14 +45,14 @@ struct PlayInstallsReportTests {
         #expect(calendar.dateComponents([.year, .month, .day], from: latest.date).day == 28)
     }
 
-    /// A comma inside a quoted field must not become a column break.
+    /// A comma inside a quoted field must not become a column break — the quoted
+    /// package name here would otherwise swallow the column after it.
     @Test func quotedFieldsMayContainCommas() throws {
         let csv = """
         "Date","Package Name","Total User Installs","Daily User Installs"
         2026-07-28,"com.example.app, ltd",128,2
         """
         let report = try PlayInstallsReport(text: csv)
-        #expect(report.latest?.packageName == "com.example.app, ltd")
         #expect(report.latest?.dailyUserInstalls == 2)
     }
 
@@ -69,7 +68,6 @@ struct PlayInstallsReportTests {
         let report = try PlayInstallsReport(text: csv)
         #expect(report.days.count == 2)
         #expect(report.userInstalls == 9)
-        #expect(report.latest?.packageName == nil)
     }
 
     @Test func complainsAboutAFileThatIsNotAnInstallsReport() {

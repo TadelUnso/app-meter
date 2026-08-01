@@ -114,7 +114,7 @@ public enum SalesDump {
         for app in figures {
             NSLog("[sales] %@ %@ (%@): %d lifetime, %d on %@",
                   store, app.name, app.id, app.lifetime, app.today,
-                  ISO8601DateFormatter().string(from: app.asOf))
+                  app.asOf.map { ISO8601DateFormatter().string(from: $0) } ?? "unknown day")
         }
     }
 }

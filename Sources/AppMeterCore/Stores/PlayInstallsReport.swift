@@ -10,10 +10,6 @@ import Foundation
 public struct PlayInstallsReport: Equatable, Sendable {
     public struct Day: Equatable, Sendable {
         public let date: Date
-        /// Nil when the file omits the column. Nothing depends on it — the app
-        /// a report belongs to is the one in its filename — so its absence is
-        /// not a reason to reject the file.
-        public let packageName: String?
         /// Users, not devices: one person with a phone and a tablet is one
         /// install, which is the figure a developer means by "how many people
         /// have this".
@@ -46,12 +42,12 @@ public struct PlayInstallsReport: Equatable, Sendable {
 
     private enum Column {
         static let date = "Date"
-        static let package = "Package Name"
         static let daily = "Daily User Installs"
 
         /// Only the columns the panel actually reads. Play renames and drops
-        /// columns — `Package Name` became `Package name` in July 2026 — and a
-        /// report is still usable without one that nothing consults.
+        /// other columns on its own schedule — the file changed shape at the
+        /// end of July 2026 and is still usable, because nothing here depends
+        /// on any column but these two.
         static let required = [date, daily]
     }
 
@@ -101,7 +97,6 @@ public struct PlayInstallsReport: Equatable, Sendable {
 
             return Day(
                 date: date,
-                packageName: field(Column.package),
                 dailyUserInstalls: field(Column.daily).flatMap(Int.init) ?? 0
             )
         }

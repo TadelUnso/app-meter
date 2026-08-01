@@ -81,14 +81,14 @@ struct FiguresView: View {
         VStack(spacing: 4 * scale) {
             HStack(spacing: 8 * scale) {
                 Spacer(minLength: 0)
-                Text("APP STORE")
+                Text(Store.appStore.label)
                     .font(Theme.label(scale: scale))
-                    .foregroundStyle(Theme.appStore)
+                    .foregroundStyle(Store.appStore.tint)
                     .lineLimit(1)
                     .frame(width: 96 * scale, alignment: .trailing)
-                Text("GOOGLE PLAY")
+                Text(Store.googlePlay.label)
                     .font(Theme.label(scale: scale))
-                    .foregroundStyle(Theme.googlePlay)
+                    .foregroundStyle(Store.googlePlay.tint)
                     .lineLimit(1)
                     .frame(width: 96 * scale, alignment: .trailing)
             }
@@ -138,17 +138,15 @@ private struct AppLine: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
 
-                if figures.today > 0 {
-                    Text(Fmt.delta(figures.today))
-                        .font(Theme.label(scale: scale))
-                        .foregroundStyle(Theme.accent)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                }
+                Text(Fmt.delta(figures.today))
+                    .font(Theme.label(scale: scale))
+                    .foregroundStyle(figures.today > 0 ? Theme.accent : Theme.dim)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
             }
         }
         .frame(width: 96 * scale, alignment: .trailing)
-        .help(figures.map { "Figures for \(Fmt.day($0.asOf))" } ?? "")
+        .help(figures.flatMap(\.asOf).map { "Figures for \(Fmt.day($0))" } ?? "")
     }
 }
 
@@ -190,9 +188,9 @@ private struct StoreLine: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6 * scale) {
-            Text(figures.store == .appStore ? "APP STORE" : "GOOGLE PLAY")
+            Text(figures.store.label)
                 .font(Theme.label(scale: scale))
-                .foregroundStyle(figures.store == .appStore ? Theme.appStore : Theme.googlePlay)
+                .foregroundStyle(figures.store.tint)
                 .frame(width: 66 * scale, alignment: .leading)
                 .lineLimit(1)
 
@@ -207,15 +205,13 @@ private struct StoreLine: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
 
-            if figures.today > 0 {
-                Text(Fmt.delta(figures.today))
-                    .font(Theme.delta(scale: scale))
-                    .foregroundStyle(Theme.accent)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-            }
+            Text(Fmt.delta(figures.today))
+                .font(Theme.delta(scale: scale))
+                .foregroundStyle(figures.today > 0 ? Theme.accent : Theme.dim)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
         }
-        .help("Figures for \(Fmt.day(figures.asOf))")
+        .help(figures.asOf.map { "Figures for \(Fmt.day($0))" } ?? "No dated report yet")
     }
 }
 
@@ -227,9 +223,9 @@ private struct StoreTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6 * scale) {
-            Text(figures.store == .appStore ? "APP STORE" : "GOOGLE PLAY")
+            Text(figures.store.label)
                 .font(Theme.label(scale: scale))
-                .foregroundStyle(figures.store == .appStore ? Theme.appStore : Theme.googlePlay)
+                .foregroundStyle(figures.store.tint)
 
             Text(Fmt.installs(figures.lifetime))
                 .font(Theme.value(scale: scale))
@@ -255,10 +251,13 @@ private struct StoreTile: View {
 
                 // The stores report days apart, so the day is named rather than
                 // called "today" — two figures that look equally fresh can be a
-                // week apart.
-                Text(Fmt.day(figures.asOf))
-                    .font(Theme.caption(scale: scale))
-                    .foregroundStyle(Theme.dim)
+                // week apart. Nil (no daily report has ever had anything in it)
+                // says nothing rather than guessing at a day.
+                if let asOf = figures.asOf {
+                    Text(Fmt.day(asOf))
+                        .font(Theme.caption(scale: scale))
+                        .foregroundStyle(Theme.dim)
+                }
             }
         }
         .padding(12 * scale)

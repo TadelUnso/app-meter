@@ -1,14 +1,5 @@
 import Foundation
 
-/// Turns App Store Connect reports into the figures the panel shows.
-///
-/// The lifetime total is the sum of the whole plan; the day's growth is the
-/// most recent daily report that had anything in it. Both come out of the same
-/// pass, because the daily reports at the end of the plan are fetched anyway.
-///
-/// Requests go one at a time. After the first run almost all of them are served
-/// from the cache, and a burst of forty parallel requests would be a good way
-/// to meet Apple's rate limiter for no gain.
 /// Where AppleInstallsService fetches what it needs from App Store Connect:
 /// sales reports (cached and summed into figures) and app metadata (bundle ids,
 /// used to pair apps across stores). Lives behind a protocol so the service can
@@ -43,6 +34,15 @@ public struct AppleInstalls: Sendable {
     }
 }
 
+/// Turns App Store Connect reports into the figures the panel shows.
+///
+/// The lifetime total is the sum of the whole plan; the day's growth is the
+/// most recent daily report that had anything in it. Both come out of the same
+/// pass, because the daily reports at the end of the plan are fetched anyway.
+///
+/// Requests go one at a time. After the first run almost all of them are served
+/// from the cache, and a burst of forty parallel requests would be a good way
+/// to meet Apple's rate limiter for no gain.
 public struct AppleInstallsService: Sendable {
     private let client: any SalesReportSource
     private let history: InstallHistoryStore
@@ -155,7 +155,10 @@ public struct AppleInstallsService: Sendable {
             let name = app?.name ?? titles[identifier] ?? identifier
             let lifetime = totals[identifier] ?? 0
             let today = latestDay?.units[identifier] ?? 0
-            let asOf = latestDay?.date ?? now
+            // No fallback to `now`: a day this fresh has not necessarily been
+            // published yet, and the freshness tile exists to say which day the
+            // figures are really from — making one up would defeat the point.
+            let asOf = latestDay?.date
 
             if let existing = byID[id] {
                 // Same bundle id from a different Apple identifier: combine them.
@@ -165,7 +168,7 @@ public struct AppleInstallsService: Sendable {
                     store: .appStore,
                     lifetime: existing.lifetime + lifetime,
                     today: existing.today + today,
-                    asOf: max(existing.asOf, asOf)
+                    asOf: [existing.asOf, asOf].compactMap { $0 }.max()
                 )
             } else {
                 byID[id] = AppFigures(
