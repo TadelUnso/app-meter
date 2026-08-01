@@ -345,5 +345,16 @@ struct AppleInstallsServiceTests {
 
         #expect(installs.figures.first?.lifetime == 140)
         #expect(installs.problems.contains { $0.contains("rate") })
+        #expect(installs.isComplete == false)
+    }
+
+    /// The ordinary case: nothing cut the walk short, so the result is complete.
+    @Test func aWalkThatFinishesIsComplete() async throws {
+        let source = StubSource([.yearly(2025): Self.report(units: 40)])
+
+        let installs = try await AppleInstallsService(client: source, history: Self.store())
+            .installs(now: Self.secondOfJanuary)
+
+        #expect(installs.isComplete == true)
     }
 }

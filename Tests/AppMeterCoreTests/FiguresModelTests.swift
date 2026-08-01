@@ -71,6 +71,45 @@ struct FiguresModelTests {
         #expect(FiguresModel.rows([:]).isEmpty)
     }
 
+    /// The bug this guards against: a rate limit cutting the walk short must
+    /// not let a small partial total overwrite a complete one already on screen.
+    @Test func anIncompleteResultDoesNotReplaceRetainedFigures() {
+        let existing = [Self.app("Finder", .appStore, id: "com.example.finder", lifetime: 15_200)]
+        let incoming = AppleInstalls(
+            figures: [Self.app("Finder", .appStore, id: "com.example.finder", lifetime: 480)],
+            isComplete: false
+        )
+
+        let figures = FiguresModel.retainedAppleFigures(existing: existing, incoming: incoming)
+
+        #expect(figures == existing)
+    }
+
+    /// A first run has no prior figures to protect, so the partial is shown
+    /// rather than nothing.
+    @Test func anIncompleteResultIsPublishedWhenThereIsNothingPrior() {
+        let incoming = AppleInstalls(
+            figures: [Self.app("Finder", .appStore, id: "com.example.finder", lifetime: 480)],
+            isComplete: false
+        )
+
+        let figures = FiguresModel.retainedAppleFigures(existing: nil, incoming: incoming)
+
+        #expect(figures == incoming.figures)
+    }
+
+    /// A complete result always replaces, even over its own prior figures.
+    @Test func aCompleteResultReplacesWhatCameBefore() {
+        let existing = [Self.app("Finder", .appStore, id: "com.example.finder", lifetime: 15_200)]
+        let incoming = AppleInstalls(
+            figures: [Self.app("Finder", .appStore, id: "com.example.finder", lifetime: 15_400)]
+        )
+
+        let figures = FiguresModel.retainedAppleFigures(existing: existing, incoming: incoming)
+
+        #expect(figures == incoming.figures)
+    }
+
     /// Two apps can share a name. Without a tiebreaker their order comes out of
     /// a hash and changes between launches, so the panel reshuffles itself for
     /// no reason the user can see.

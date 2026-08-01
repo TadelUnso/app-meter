@@ -31,10 +31,15 @@ public struct AppleInstalls: Sendable {
     /// short. A refresh can have more than one such thing, so a single optional
     /// string cannot say so.
     public let problems: [String]
+    /// False when the walk stopped before covering the whole plan — today, only
+    /// a rate limit does that. The caller needs this as a plain flag rather than
+    /// having to recognise the rate-limit sentence inside `problems`.
+    public let isComplete: Bool
 
-    public init(figures: [AppFigures], problems: [String] = []) {
+    public init(figures: [AppFigures], problems: [String] = [], isComplete: Bool = true) {
         self.figures = figures
         self.problems = problems
+        self.isComplete = isComplete
     }
 }
 
@@ -52,6 +57,7 @@ public struct AppleInstallsService: Sendable {
         var titles = await history.current.titles
         var latestDay: (date: Date, units: [String: Int])?
         var problems: [String] = []
+        var isComplete = true
 
         // A queue rather than a plain loop: a coarse period Apple has not
         // published yet is replaced here by the finer ones covering the same
@@ -81,6 +87,7 @@ public struct AppleInstallsService: Sendable {
                     // showing an incomplete total beats showing nothing: the next refresh picks
                     // up from the cache and gets further.
                     problems.append("App Store: Apple is rate-limiting this key, so the total is still filling in.")
+                    isComplete = false
                     break
                 }
                 guard let report else {
@@ -173,6 +180,6 @@ public struct AppleInstallsService: Sendable {
         }
 
         let figures = byID.keys.sorted().map { byID[$0]! }
-        return AppleInstalls(figures: figures, problems: problems)
+        return AppleInstalls(figures: figures, problems: problems, isComplete: isComplete)
     }
 }

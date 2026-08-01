@@ -90,8 +90,10 @@ public final class FiguresModel: ObservableObject {
                 let installs = try await AppleInstallsService(
                     client: AppStoreConnectClient(account: account)
                 ).installs()
-                byStore[.appStore] = installs.figures
-                answered = true
+                byStore[.appStore] = Self.retainedAppleFigures(existing: byStore[.appStore], incoming: installs)
+                // An incomplete answer is not a finished ask: it must not be the
+                // thing that tells the footer the figures are fresh.
+                if installs.isComplete { answered = true }
                 newProblems.append(contentsOf: installs.problems)
             } catch {
                 newProblems.append("App Store: \(error.localizedDescription)")
@@ -121,6 +123,18 @@ public final class FiguresModel: ObservableObject {
         if answered {
             lastRefresh = Date()
         }
+    }
+
+    /// Whether an Apple result that stopped partway through the walk may
+    /// replace the figures already on screen. This class's own contract is that
+    /// a store's figures move only on that store's next *good* answer — a rate
+    /// limit cutting the walk short must not let a smaller, partial total
+    /// overwrite a complete one. The exception is a first run: there is nothing
+    /// to protect yet, so the partial beats an empty panel.
+    /// Pure, hence nonisolated — and testable without an actor hop.
+    nonisolated static func retainedAppleFigures(existing: [AppFigures]?, incoming: AppleInstalls) -> [AppFigures] {
+        guard !incoming.isComplete, let existing else { return incoming.figures }
+        return existing
     }
 
     /// Both stores' figures as one row per app, sorted by name.
