@@ -34,6 +34,18 @@ public enum Fmt {
         Self.dayFormatter.string(from: date)
     }
 
+    /// How long ago a refresh happened: "just now", "25 min ago", "5 h ago".
+    /// A clock that jumped backwards, or a refresh under 45 seconds old, both
+    /// read as "just now" rather than a negative or zero duration.
+    public static func age(_ date: Date, now: Date) -> String {
+        let seconds = now.timeIntervalSince(date)
+        if seconds < 45 { return "just now" }
+        let minutes = Int((seconds / 60).rounded())
+        if minutes < 60 { return "\(minutes) min ago" }
+        let hours = Int((seconds / 3600).rounded())
+        return "\(hours) h ago"
+    }
+
     private static let dayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")

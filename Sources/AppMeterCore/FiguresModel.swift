@@ -22,6 +22,12 @@ public final class FiguresModel: ObservableObject {
     /// separates "no apps configured" from "still asking".
     @Published public private(set) var isLoading = true
 
+    /// When the stores were last successfully asked. Set only when at least
+    /// one store answered — a refresh where both fail did not make the
+    /// figures any fresher, and moving this forward anyway would tell the
+    /// user the numbers are current when they are exactly as stale as before.
+    @Published public private(set) var lastRefresh: Date?
+
     private var byStore: [Store: [AppFigures]] = [:]
     private var timer: Timer?
 
@@ -74,6 +80,7 @@ public final class FiguresModel: ObservableObject {
         NSLog("[model] refresh started")
         defer { NSLog("[model] refresh finished: %d row(s), %d problem(s)", rows.count, problems.count) }
         var newProblems: [String] = []
+        var answered = false
 
         if let account = StoreAccounts.appStoreConnect() {
             do {
@@ -81,6 +88,7 @@ public final class FiguresModel: ObservableObject {
                     client: AppStoreConnectClient(account: account)
                 ).installs()
                 byStore[.appStore] = installs.figures
+                answered = true
                 if let failure = installs.listingFailure {
                     newProblems.append("App Store: could not list apps — \(failure)")
                 }
@@ -94,6 +102,7 @@ public final class FiguresModel: ObservableObject {
         if let client = StoreAccounts.googlePlay() {
             do {
                 byStore[.googlePlay] = try await PlayInstallsService(client: client).figures()
+                answered = true
             } catch {
                 newProblems.append("Google Play: \(error.localizedDescription)")
             }
@@ -104,6 +113,13 @@ public final class FiguresModel: ObservableObject {
         rows = Self.rows(byStore)
         problems = newProblems
         isLoading = false
+        // Only advance the clock when a store actually answered: a refresh
+        // where everything failed did not make the figures any fresher, and
+        // saying otherwise would be a lie exactly when the user most needs
+        // the truth.
+        if answered {
+            lastRefresh = Date()
+        }
     }
 
     /// Both stores' figures as one row per app, sorted by name.

@@ -38,6 +38,9 @@ public struct WidgetRootView: View {
                 isLoading: model.isLoading,
                 scale: scale
             )
+            if let lastRefresh = model.lastRefresh {
+                freshness(since: lastRefresh)
+            }
         }
         .onAppear { model.start() }
         // Rebuilding the timer on any change of the stored interval; the other
@@ -102,6 +105,20 @@ public struct WidgetRootView: View {
                         : "Click to lock the widget position and size")
                 }
             }
+        }
+    }
+
+    /// How long ago the stores answered, trailing-aligned under the figures.
+    /// Wrapped in a periodic timeline so the text itself goes stale — without
+    /// it, "just now" would sit there unchanged until the next poll, up to
+    /// fifteen minutes later.
+    private func freshness(since lastRefresh: Date) -> some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            Text(Fmt.age(lastRefresh, now: context.date))
+                .font(Theme.caption(scale: scale))
+                .foregroundStyle(Theme.dim)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 

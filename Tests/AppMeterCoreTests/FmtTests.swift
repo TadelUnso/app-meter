@@ -50,4 +50,21 @@ struct FmtTests {
         let date = SalesPeriods.calendar.date(from: components)!
         #expect(Fmt.day(date) == "30 Jul")
     }
+
+    /// How long ago the stores were asked, in the shortest form that is still
+    /// unambiguous. Minutes for the first hour, then hours.
+    @Test func agesReadAsRoundedUnits() {
+        let now = Date(timeIntervalSince1970: 10_000_000)
+        #expect(Fmt.age(now.addingTimeInterval(-20), now: now) == "just now")
+        #expect(Fmt.age(now.addingTimeInterval(-60), now: now) == "1 min ago")
+        #expect(Fmt.age(now.addingTimeInterval(-25 * 60), now: now) == "25 min ago")
+        #expect(Fmt.age(now.addingTimeInterval(-60 * 60), now: now) == "1 h ago")
+        #expect(Fmt.age(now.addingTimeInterval(-5 * 60 * 60), now: now) == "5 h ago")
+    }
+
+    /// A clock that jumped backwards must not print a negative age.
+    @Test func aFutureRefreshReadsAsJustNow() {
+        let now = Date(timeIntervalSince1970: 10_000_000)
+        #expect(Fmt.age(now.addingTimeInterval(120), now: now) == "just now")
+    }
 }

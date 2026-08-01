@@ -25,7 +25,7 @@ public enum Theme {
     }
 
     public static func value(scale: Double) -> Font {
-        .system(size: 34 * scale, weight: .regular).monospacedDigit()
+        .system(size: 42 * scale, weight: .regular).monospacedDigit()
     }
 
     public static func delta(scale: Double) -> Font {

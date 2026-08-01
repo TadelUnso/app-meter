@@ -206,8 +206,13 @@ private struct StoreLine: View {
                 .frame(width: 66 * scale, alignment: .leading)
                 .lineLimit(1)
 
+            // Theme.value grew from 34 to 42pt for the single-app tile; the
+            // multiplier here is trimmed from 0.55 to 0.45 to hold this line's
+            // actual size steady (34 * 0.55 ≈ 42 * 0.45) — the two-column grid
+            // card has no extra width to give a bigger figure, and a full
+            // lifetime total next to a delta was already close to the edge.
             Text(Fmt.installs(figures.lifetime))
-                .font(Theme.value(scale: scale * 0.55))
+                .font(Theme.value(scale: scale * 0.45))
                 .foregroundStyle(Theme.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
@@ -241,6 +246,13 @@ private struct StoreTile: View {
                 .foregroundStyle(Theme.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
+
+            // Rules the figure off from the movement below it, as in the
+            // reference mockup. Only this layout is roomy enough to carry it.
+            Rectangle()
+                .fill(Theme.track)
+                .frame(height: 1)
+                .padding(.top, 2 * scale)
 
             HStack(spacing: 5 * scale) {
                 Text(Fmt.delta(figures.today))
