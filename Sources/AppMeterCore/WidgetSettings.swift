@@ -10,10 +10,6 @@ public enum WidgetSettings {
     /// Pins the widget in place: blocks both dragging and resizing.
     public static let positionLockedKey = "positionLocked"
 
-    /// Whether the desktop window is on screen. Polling keeps running while it
-    /// is hidden, so bringing it back shows fresh figures.
-    public static let widgetVisibleKey = "widgetVisible"
-
     /// Width of the panel, in points. Unlike the sibling claude-usage-widget the
     /// panel is not a square: the number of apps decides the layout and the
     /// layout decides the height, so only the width is the user's to set.
@@ -38,12 +34,6 @@ public enum WidgetSettings {
     /// Google Play, non-secret half: the Cloud Storage bucket the console
     /// exports reports to. The service account JSON is a Keychain item.
     public static let googlePlayBucketKey = "googlePlayBucket"
-
-    /// `bool(forKey:)` returns false for an absent key, which would start a
-    /// fresh install hidden with no way to tell why.
-    public static func isVisible(in defaults: UserDefaults) -> Bool {
-        defaults.object(forKey: widgetVisibleKey) as? Bool ?? true
-    }
 
     public static func clampWidth(_ width: Double) -> Double {
         min(max(width, minWidth), maxWidth)

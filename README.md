@@ -18,15 +18,16 @@ the reports Apple and Google produce for you, using credentials you supply.
 
 ## Features
 
-- **Lifetime installs per app** — Apple's figure counts first-time downloads
-  (updates and redownloads excluded), reconstructed from report history and
-  cached locally; Google's is the *Total User Installs* column of the Play
-  statistics export, read as published
+- **Lifetime installs per app** — both figures are reconstructed by summing
+  daily install counts across report history: Apple's counts first-time
+  downloads (updates and redownloads excluded) and is cached locally; Google's
+  is summed from every monthly Play statistics export, since the export's own
+  running total has read zero since a July 2026 format change
 - **Today's growth** — the most recent day each store has reported, shown as a
   green delta next to the total
 - **Adaptive layout** — one app fills the panel, two to four share a grid, five
-  or more collapse into rows. A colour dot tells the stores apart: purple for
-  the App Store, green for Google Play
+  or more collapse into rows. A written label tells the stores apart: "APP
+  STORE" or "GOOGLE PLAY", each in its own colour
 - Either store works on its own — configure only the one you publish to
 - Errors ride under the figures, never in place of them: one store failing does
   not blank the other's numbers
@@ -36,7 +37,7 @@ the reports Apple and Google produce for you, using credentials you supply.
 - Resizable: drag either side edge (320–900 pt), saved across launches
 - 🔒 Clickable lock icon (plus a "Lock position" menu item) pins both position
   and size
-- Hide or restore the widget with **Show on desktop** in the menu bar
+- On screen for as long as the app runs; quit from the menu bar to close it
 - Launch at login toggle; no Dock icon
 
 ## Requirements

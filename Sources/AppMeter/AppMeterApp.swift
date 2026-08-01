@@ -9,7 +9,6 @@ struct AppMeterApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     @AppStorage(WidgetSettings.positionLockedKey) private var positionLocked = false
-    @AppStorage(WidgetSettings.widgetVisibleKey) private var widgetVisible = true
 
     /// A system symbol instead of a hand-drawn path: SF Symbols are hinted by
     /// Apple for the exact sizes they get drawn at, including menu bar scale,
@@ -40,7 +39,6 @@ struct AppMeterApp: App {
             .disabled(!appDelegate.updaterController.updater.canCheckForUpdates)
             Divider()
             Toggle("Lock position", isOn: $positionLocked)
-            Toggle("Show on desktop", isOn: $widgetVisible)
             LaunchAtLoginToggle()
             Divider()
             // An accessory app has no active application to open a window in
@@ -169,9 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         self.window = window
         syncWindowSize()
-        if WidgetSettings.isVisible(in: .standard) {
-            window.orderFrontRegardless()
-        }
+        window.orderFrontRegardless()
 
         if SalesDump.isEnabled {
             Task { await SalesDump.run() }
@@ -183,7 +179,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.reconcileVisibility()
                 self?.syncWindowSize()
             }
         }
@@ -252,16 +247,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Set APP_METER_LOG_GEOMETRY=1 to trace every window resize. Off by
     /// default: this fires on every frame of a resize drag.
     static let logsGeometry = ProcessInfo.processInfo.environment["APP_METER_LOG_GEOMETRY"] == "1"
-
-    /// Shows or hides the window to match the stored flag. Idempotent, so
-    /// unrelated defaults changes do not re-order the window.
-    private func reconcileVisibility() {
-        guard let window else { return }
-        let shouldBeVisible = WidgetSettings.isVisible(in: .standard)
-        if shouldBeVisible, !window.isVisible {
-            window.orderFrontRegardless()
-        } else if !shouldBeVisible, window.isVisible {
-            window.orderOut(nil)
-        }
-    }
 }
