@@ -14,6 +14,9 @@ import Foundation
 /// below can be tested without a network.
 public protocol SalesReportSource: Sendable {
     func report(for period: SalesPeriod) async throws -> SalesReport?
+    /// Apple identifier → app. Empty when the key cannot list apps; the service
+    /// then falls back to the identifiers and titles the reports carry.
+    func apps() async throws -> [String: AppStoreApp]
 }
 
 extension AppStoreConnectClient: SalesReportSource {}

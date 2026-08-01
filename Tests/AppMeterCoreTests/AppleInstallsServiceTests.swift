@@ -6,16 +6,20 @@ import Testing
 /// test can tell a cache hit from a fetch.
 private actor StubSource: SalesReportSource {
     private let reports: [String: SalesReport]
+    private let knownApps: [String: AppStoreApp]
     private(set) var requested: [String] = []
 
-    init(_ reports: [SalesPeriod: SalesReport]) {
+    init(_ reports: [SalesPeriod: SalesReport], apps: [String: AppStoreApp] = [:]) {
         self.reports = Dictionary(uniqueKeysWithValues: reports.map { ($0.key.cacheKey, $0.value) })
+        self.knownApps = apps
     }
 
     func report(for period: SalesPeriod) async throws -> SalesReport? {
         requested.append(period.cacheKey)
         return reports[period.cacheKey]
     }
+
+    func apps() async throws -> [String: AppStoreApp] { knownApps }
 
     func requestCount(for period: SalesPeriod) -> Int {
         requested.filter { $0 == period.cacheKey }.count

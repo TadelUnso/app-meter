@@ -33,6 +33,18 @@ public enum AppStoreConnectError: LocalizedError {
     }
 }
 
+/// An app as App Store Connect describes it. The bundle id is what pairs it
+/// with the Play package of the same app; the sales reports carry neither.
+public struct AppStoreApp: Equatable, Sendable {
+    public let bundleID: String
+    public let name: String
+
+    public init(bundleID: String, name: String) {
+        self.bundleID = bundleID
+        self.name = name
+    }
+}
+
 /// Reads daily sales reports from App Store Connect.
 ///
 /// One report is one day, and Apple has no endpoint for "the latest" — so the
@@ -115,6 +127,56 @@ public struct AppStoreConnectClient: Sendable {
         }
 
         return nil
+    }
+
+    /// Apple identifier → app, for every app the key can see.
+    ///
+    /// The sales reports identify an app by its Apple identifier and its title;
+    /// neither pairs with anything Google publishes. This is the one call that
+    /// yields the bundle id, which does.
+    public func apps() async throws -> [String: AppStoreApp] {
+        let url = URL(string: "https://api.appstoreconnect.apple.com/v1/apps?fields[apps]=name,bundleId&limit=200")!
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(try token())", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw AppStoreConnectError.http(status: 0, body: "no response")
+        }
+
+        switch http.statusCode {
+        case 200:
+            return try Self.appsResponse(from: data)
+        case 401, 403:
+            throw AppStoreConnectError.unauthorized
+        case 429:
+            throw AppStoreConnectError.rateLimited
+        default:
+            throw AppStoreConnectError.http(
+                status: http.statusCode,
+                body: String(data: data.prefix(500), encoding: .utf8) ?? "unreadable"
+            )
+        }
+    }
+
+    static func appsResponse(from data: Data) throws -> [String: AppStoreApp] {
+        struct Listing: Decodable {
+            struct App: Decodable {
+                struct Attributes: Decodable {
+                    let name: String?
+                    let bundleId: String?
+                }
+                let id: String
+                let attributes: Attributes
+            }
+            let data: [App]
+        }
+
+        let listing = try JSONDecoder().decode(Listing.self, from: data)
+        return listing.data.reduce(into: [:]) { result, app in
+            guard let bundleID = app.attributes.bundleId, !bundleID.isEmpty else { return }
+            result[app.id] = AppStoreApp(bundleID: bundleID, name: app.attributes.name ?? bundleID)
+        }
     }
 
     private func token() throws -> String {
