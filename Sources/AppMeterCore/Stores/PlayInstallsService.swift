@@ -1,5 +1,16 @@
 import Foundation
 
+/// Where a package's monthly reports come from. The one implementation that
+/// matters is `GooglePlayClient`; the protocol exists so the summing below can
+/// be tested without a bucket.
+public protocol PlayReportSource: Sendable {
+    func accessToken() async throws -> String
+    func overviewMonths() async throws -> [String: [YearMonth]]
+    func installsReport(package: String, year: Int, month: Int, token: String?) async throws -> PlayInstallsReport?
+}
+
+extension GooglePlayClient: PlayReportSource {}
+
 /// Turns the Play reporting bucket into panel figures.
 ///
 /// The lifetime total is summed from every monthly overview the bucket holds.
@@ -11,9 +22,9 @@ import Foundation
 /// there is no guessing and no 404s, and a monthly file is two kilobytes. An
 /// app published for three years costs thirty-six small reads an hour.
 public struct PlayInstallsService: Sendable {
-    private let client: GooglePlayClient
+    private let client: any PlayReportSource
 
-    public init(client: GooglePlayClient) {
+    public init(client: any PlayReportSource) {
         self.client = client
     }
 

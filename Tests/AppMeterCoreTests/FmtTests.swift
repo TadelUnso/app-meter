@@ -42,13 +42,18 @@ struct FmtTests {
     }
 
     /// Day and month, no year: the panel never shows a date more than a week old.
-    @Test func daysAreWrittenShort() {
+    /// The day is not zero-padded, so a single-digit day must read "3 Jul", not "03 Jul".
+    @Test("writes the day short", arguments: [
+        (30, "30 Jul"),
+        (3, "3 Jul"),
+    ])
+    func daysAreWrittenShort(day: Int, expected: String) {
         var components = DateComponents()
         components.year = 2026
         components.month = 7
-        components.day = 30
+        components.day = day
         let date = SalesPeriods.calendar.date(from: components)!
-        #expect(Fmt.day(date) == "30 Jul")
+        #expect(Fmt.day(date) == expected)
     }
 
     /// How long ago the stores were asked, in the shortest form that is still

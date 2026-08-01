@@ -66,7 +66,11 @@ public struct GooglePlayClient: Sendable {
     /// Minted fresh per refresh rather than cached: a refresh is at most hourly
     /// and the exchange is one request, so caching would save nothing and add
     /// an expiry to get wrong.
-    func accessToken() async throws -> String {
+    ///
+    /// Public because `PlayInstallsService` calls it through `PlayReportSource`
+    /// to get one token and thread it through every report read of a refresh,
+    /// rather than mint one per file.
+    public func accessToken() async throws -> String {
         let assertion = try GoogleServiceAccountToken.make(
             clientEmail: account.clientEmail,
             privateKeyPEM: privateKeyPEM,

@@ -38,13 +38,22 @@ struct FiguresModelTests {
         #expect(rows.count == 2)
     }
 
-    /// The App Store name is the human one; a Play-only row has nothing better
-    /// than its package to show.
-    @Test func theNameComesFromTheAppStoreWhenThereIsOne() {
+    /// A Play-only row has nothing better than its package to show.
+    @Test func aPlayOnlyRowFallsBackToItsPackageAsTheName() {
         let rows = FiguresModel.rows([
             .googlePlay: [Self.app("com.example.app", .googlePlay, id: "com.example.app")],
         ])
         #expect(rows[0].name == "com.example.app")
+    }
+
+    /// The App Store name is the human one, so it wins over Play's package
+    /// name when both stores carry the same app.
+    @Test func theNameComesFromTheAppStoreWhenBothStoresHaveTheApp() {
+        let rows = FiguresModel.rows([
+            .appStore: [Self.app("Finder", .appStore, id: "com.example.finder")],
+            .googlePlay: [Self.app("com.example.finder", .googlePlay, id: "com.example.finder")],
+        ])
+        #expect(rows[0].name == "Finder")
     }
 
     /// Case must not scatter the sort: "app one" and "App Two" are neighbours.

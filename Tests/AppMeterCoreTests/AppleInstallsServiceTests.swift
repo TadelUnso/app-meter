@@ -273,11 +273,19 @@ struct AppleInstallsServiceTests {
     /// one of which would then quietly overwrite the other.
     @Test func twoIdentifiersSharingABundleIdBecomeOneApp() async throws {
         let source = StubSource(
-            [.yearly(2025): try! SalesReport(tsv: """
-            SKU\tTitle\tProduct Type Identifier\tUnits\tApple Identifier
-            old\tFinder\t1T\t30\t111
-            new\tFinder\t1T\t12\t222
-            """)],
+            [
+                .yearly(2025): try! SalesReport(tsv: """
+                SKU\tTitle\tProduct Type Identifier\tUnits\tApple Identifier
+                old\tFinder\t1T\t30\t111
+                new\tFinder\t1T\t12\t222
+                """),
+                // A daily report under the new identifier, so the merge's today
+                // sum and asOf maximum are exercised, not just the lifetime.
+                .daily(year: 2026, month: 1, day: 1): try! SalesReport(tsv: """
+                SKU\tTitle\tProduct Type Identifier\tUnits\tApple Identifier
+                finder\tFinder\t1T\t4\t222
+                """),
+            ],
             apps: [
                 "111": AppStoreApp(bundleID: "com.example.finder", name: "Finder"),
                 "222": AppStoreApp(bundleID: "com.example.finder", name: "Finder"),
@@ -289,7 +297,9 @@ struct AppleInstallsServiceTests {
 
         #expect(figures.count == 1)
         #expect(figures[0].id == "com.example.finder")
-        #expect(figures[0].lifetime == 42)
+        #expect(figures[0].lifetime == 46)
+        #expect(figures[0].today == 4)
+        #expect(figures[0].asOf == Self.date("2026-01-01T00:00:00Z"))
     }
 
     /// A key scoped to sales only reads reports and is refused the app listing.
