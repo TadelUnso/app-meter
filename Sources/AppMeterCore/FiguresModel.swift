@@ -92,9 +92,7 @@ public final class FiguresModel: ObservableObject {
                 ).installs()
                 byStore[.appStore] = installs.figures
                 answered = true
-                if let failure = installs.listingFailure {
-                    newProblems.append("App Store: could not list apps — \(failure)")
-                }
+                newProblems.append(contentsOf: installs.problems)
             } catch {
                 newProblems.append("App Store: \(error.localizedDescription)")
             }

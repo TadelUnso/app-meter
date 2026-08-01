@@ -8,16 +8,26 @@ private actor StubSource: SalesReportSource {
     private let reports: [String: SalesReport]
     private let knownApps: [String: AppStoreApp]
     private let listingFails: Bool
+    private let rateLimitedAt: Set<String>
     private(set) var requested: [String] = []
 
-    init(_ reports: [SalesPeriod: SalesReport], apps: [String: AppStoreApp] = [:], listingFails: Bool = false) {
+    init(
+        _ reports: [SalesPeriod: SalesReport],
+        apps: [String: AppStoreApp] = [:],
+        listingFails: Bool = false,
+        rateLimitedAt: Set<String> = []
+    ) {
         self.reports = Dictionary(uniqueKeysWithValues: reports.map { ($0.key.cacheKey, $0.value) })
         self.knownApps = apps
         self.listingFails = listingFails
+        self.rateLimitedAt = rateLimitedAt
     }
 
     func report(for period: SalesPeriod) async throws -> SalesReport? {
         requested.append(period.cacheKey)
+        if rateLimitedAt.contains(period.cacheKey) {
+            throw AppStoreConnectError.rateLimited
+        }
         return reports[period.cacheKey]
     }
 
@@ -294,7 +304,7 @@ struct AppleInstallsServiceTests {
         #expect(installs.figures.count == 1)
         #expect(installs.figures[0].lifetime == 40)
         #expect(installs.figures[0].id == "6789246448")
-        #expect(installs.listingFailure != nil)
+        #expect(installs.problems.contains { $0.contains("list apps") })
     }
 
     /// Nothing to report when the listing works.
@@ -307,7 +317,23 @@ struct AppleInstallsServiceTests {
         let installs = try await AppleInstallsService(client: source, history: Self.store())
             .installs(now: Self.secondOfJanuary)
 
-        #expect(installs.listingFailure == nil)
+        #expect(installs.problems.isEmpty)
         #expect(installs.figures[0].id == "com.biuroznakhidok.app")
+    }
+
+    /// Apple's rate limiter arriving halfway through a long first pass. What was
+    /// counted before it is real, and showing it beats showing an error — the next
+    /// refresh continues from the cache.
+    @Test func aRateLimitKeepsWhatWasAlreadyCounted() async throws {
+        let source = StubSource(
+            [.yearly(2024): Self.report(units: 100), .yearly(2025): Self.report(units: 40)],
+            rateLimitedAt: [SalesPeriod.daily(year: 2026, month: 1, day: 1).cacheKey]
+        )
+
+        let installs = try await AppleInstallsService(client: source, history: Self.store())
+            .installs(now: Self.secondOfJanuary)
+
+        #expect(installs.figures.first?.lifetime == 140)
+        #expect(installs.problems.contains { $0.contains("rate") })
     }
 }

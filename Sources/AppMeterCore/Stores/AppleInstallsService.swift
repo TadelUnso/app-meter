@@ -26,13 +26,15 @@ extension AppStoreConnectClient: SalesReportSource {}
 /// which was not bad enough to lose them.
 public struct AppleInstalls: Sendable {
     public let figures: [AppFigures]
-    /// Set when the app listing was refused. The figures are complete; what is
-    /// missing is the names and the bundle ids that pair them with Play.
-    public let listingFailure: String?
+    /// Everything that went wrong along the way but was not bad enough to lose
+    /// the figures over — a refused app listing, a rate limit that cut the walk
+    /// short. A refresh can have more than one such thing, so a single optional
+    /// string cannot say so.
+    public let problems: [String]
 
-    public init(figures: [AppFigures], listingFailure: String? = nil) {
+    public init(figures: [AppFigures], problems: [String] = []) {
         self.figures = figures
-        self.listingFailure = listingFailure
+        self.problems = problems
     }
 }
 
@@ -49,6 +51,7 @@ public struct AppleInstallsService: Sendable {
         var totals: [String: Int] = [:]
         var titles = await history.current.titles
         var latestDay: (date: Date, units: [String: Int])?
+        var problems: [String] = []
 
         // A queue rather than a plain loop: a coarse period Apple has not
         // published yet is replaced here by the finer ones covering the same
@@ -70,7 +73,17 @@ public struct AppleInstallsService: Sendable {
                 // "not published yet" and never says which. Caching it as zero
                 // would seal a month that is merely late at nothing forever, so
                 // it is not cached — the finer reports are asked instead.
-                guard let report = try await client.report(for: period) else {
+                let report: SalesReport?
+                do {
+                    report = try await client.report(for: period)
+                } catch AppStoreConnectError.rateLimited {
+                    // Everything counted so far is real and already cached. Stopping here and
+                    // showing an incomplete total beats showing nothing: the next refresh picks
+                    // up from the cache and gets further.
+                    problems.append("App Store: Apple is rate-limiting this key, so the total is still filling in.")
+                    break
+                }
+                guard let report else {
                     // Only a day's absence is ever cached. A day's report is published
                     // within about a day, so a settled day's 404 is trustworthy — it
                     // genuinely had nothing. A month or a year is a bigger aggregation
@@ -117,14 +130,13 @@ public struct AppleInstallsService: Sendable {
         }
 
         var known: [String: AppStoreApp] = [:]
-        var listingFailure: String?
         do {
             known = try await client.apps()
         } catch {
             // Not fatal: the figures below are complete without it. But a key that is
             // refused this call is refused it on every refresh, so staying quiet would
             // leave the panel showing package ids forever with no reason given.
-            listingFailure = error.localizedDescription
+            problems.append("App Store: could not list apps — \(error.localizedDescription)")
         }
 
         // An app re-created under a new Apple identifier keeps its bundle id,
@@ -161,6 +173,6 @@ public struct AppleInstallsService: Sendable {
         }
 
         let figures = byID.keys.sorted().map { byID[$0]! }
-        return AppleInstalls(figures: figures, listingFailure: listingFailure)
+        return AppleInstalls(figures: figures, problems: problems)
     }
 }
