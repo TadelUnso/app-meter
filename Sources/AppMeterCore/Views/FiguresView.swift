@@ -15,10 +15,14 @@ struct FiguresView: View {
             switch mode {
             case .empty:
                 placeholder
-            // Tasks 5-7 rewrite these to render `rows`; for now they stay
-            // empty so the panel builds without lying about single-app or
-            // grid figures it cannot yet produce.
-            case .single, .grid, .rows:
+            case .single:
+                if let row = rows.first {
+                    single(row)
+                }
+            // Tasks 6-7 rewrite these to render `rows`; for now they stay
+            // empty so the panel builds without lying about grid figures it
+            // cannot yet produce.
+            case .grid, .rows:
                 EmptyView()
             }
 
@@ -40,35 +44,59 @@ struct FiguresView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 22 * scale)
     }
+
+    private func single(_ row: AppRow) -> some View {
+        VStack(alignment: .leading, spacing: 8 * scale) {
+            HStack(alignment: .top, spacing: 10 * scale) {
+                if let appStore = row.appStore {
+                    StoreTile(figures: appStore, scale: scale)
+                }
+                if let googlePlay = row.googlePlay {
+                    StoreTile(figures: googlePlay, scale: scale)
+                }
+            }
+
+            // Only here: adding up two stores of one app is a real number, adding
+            // up two different apps is not.
+            if row.appStore != nil, row.googlePlay != nil {
+                Text("\(Fmt.installs(row.lifetime)) together · \(Fmt.delta(row.today)) today")
+                    .font(Theme.caption(scale: scale))
+                    .foregroundStyle(Theme.dim)
+            }
+        }
+    }
 }
 
-/// One app on one store, as a card: name and store dot up top, the lifetime
-/// figure as the centrepiece, the day's movement under it.
-private struct FigureCard: View {
+/// One store's figures inside the single-app layout: the store named above,
+/// the lifetime total as the centrepiece, the day's movement and its date under it.
+private struct StoreTile: View {
     let figures: AppFigures
     let scale: Double
-    /// The single-app layout lets the figure take the full display size; cards
-    /// sharing a grid take a smaller one.
-    let prominent: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6 * scale) {
-            HStack(spacing: 5 * scale) {
-                StoreDot(store: figures.store, scale: scale)
-                Text(figures.name)
-                    .font(Theme.label(scale: scale))
-                    .foregroundStyle(Theme.dim)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
+            Text(figures.store == .appStore ? "APP STORE" : "GOOGLE PLAY")
+                .font(Theme.label(scale: scale))
+                .foregroundStyle(figures.store == .appStore ? Theme.appStore : Theme.googlePlay)
 
             Text(Fmt.installs(figures.lifetime))
-                .font(prominent ? Theme.value(scale: scale) : Theme.value(scale: scale * 0.62))
+                .font(Theme.value(scale: scale))
                 .foregroundStyle(Theme.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
 
-            DeltaText(value: figures.today, scale: scale)
+            HStack(spacing: 5 * scale) {
+                Text(Fmt.delta(figures.today))
+                    .font(Theme.delta(scale: scale))
+                    .foregroundStyle(figures.today > 0 ? Theme.accent : Theme.dim)
+
+                // The stores report days apart, so the day is named rather than
+                // called "today" — two figures that look equally fresh can be a
+                // week apart.
+                Text(Fmt.day(figures.asOf))
+                    .font(Theme.caption(scale: scale))
+                    .foregroundStyle(Theme.dim)
+            }
         }
         .padding(12 * scale)
         .frame(maxWidth: .infinity, alignment: .leading)

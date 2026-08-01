@@ -28,6 +28,20 @@ public enum Fmt {
         }
     }
 
+    /// The day a figure covers, in the panel's one and only date form.
+    /// UTC because that is the zone the stores date their reports in.
+    public static func day(_ date: Date) -> String {
+        Self.dayFormatter.string(from: date)
+    }
+
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "d MMM"
+        return formatter
+    }()
+
     private static func grouped(_ value: Int) -> String {
         let negative = value < 0
         // Built from the magnitude so Int.min does not overflow on negation.

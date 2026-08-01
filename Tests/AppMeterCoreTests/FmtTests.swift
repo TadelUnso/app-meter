@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import AppMeterCore
 
@@ -38,5 +39,15 @@ struct FmtTests {
     /// a plain space lets a line break fall inside a number.
     @Test func separatorIsNonBreaking() {
         #expect(Fmt.groupSeparator == "\u{202F}")
+    }
+
+    /// Day and month, no year: the panel never shows a date more than a week old.
+    @Test func daysAreWrittenShort() {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 7
+        components.day = 30
+        let date = SalesPeriods.calendar.date(from: components)!
+        #expect(Fmt.day(date) == "30 Jul")
     }
 }
