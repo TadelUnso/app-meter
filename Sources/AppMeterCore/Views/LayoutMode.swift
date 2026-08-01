@@ -34,6 +34,25 @@ public enum LayoutMode: Equatable {
         rows.count == 1 ? rows[0].name : "App Meter"
     }
 
+    /// How much room the title has before it reaches the centred Ko-fi capsule.
+    ///
+    /// The two sit in separate layers of a `ZStack`, so neither can negotiate
+    /// width with the other: left alone, a long app name draws straight over
+    /// the capsule, and the title's own truncation does not save it — that is
+    /// governed by the lock at the far end of the row, some 190 pt further on.
+    /// Capping the title here is what turns the collision into an ellipsis.
+    ///
+    /// A `kofi` of zero means the capsule has not reported its width yet, on
+    /// the very first layout pass. Unconstrained is the right answer there: a
+    /// limit of zero would collapse the title and let it spring open a frame
+    /// later, which reads as a flicker.
+    ///
+    /// Lives here rather than in the view so it can be tested without one.
+    public static func titleLimit(content: Double, kofi: Double, gap: Double) -> Double {
+        guard kofi > 0 else { return .infinity }
+        return max(0, (content - kofi) / 2 - gap)
+    }
+
     /// The two stores of one app, added up — or nil when there is nothing
     /// meaningful to add. Lives here rather than in the view because the footer
     /// that shows it is built beside the freshness line, a level above the

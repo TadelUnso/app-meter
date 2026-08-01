@@ -40,6 +40,25 @@ struct LayoutModeTests {
         #expect([1, 2, 3].chunks(of: 0).isEmpty)
     }
 
+    /// The panel at its narrowest, measured: 350 pt less 14 pt of padding a
+    /// side leaves 322 pt of row, and the capsule takes 111 pt out of the
+    /// middle of it. That leaves 105.5 pt either side, less the 6 pt gap.
+    @Test func titleLimitLeavesRoomBeforeTheCapsule() {
+        #expect(LayoutMode.titleLimit(content: 322, kofi: 111, gap: 6) == 99.5)
+    }
+
+    /// Before the capsule has reported a width there is nothing to avoid, and
+    /// a limit of zero would collapse the title for a frame.
+    @Test func titleLimitIsUnboundedUntilTheCapsuleReports() {
+        #expect(LayoutMode.titleLimit(content: 322, kofi: 0, gap: 6) == .infinity)
+    }
+
+    /// A capsule wider than the row it sits in leaves the title no room at
+    /// all — but never a negative frame, which SwiftUI would trap on.
+    @Test func titleLimitNeverGoesNegative() {
+        #expect(LayoutMode.titleLimit(content: 100, kofi: 200, gap: 6) == 0)
+    }
+
     private static func row(_ name: String) -> AppRow {
         AppRow(id: name, name: name, appStore: nil, googlePlay: nil)
     }

@@ -17,6 +17,10 @@ public struct WidgetRootView: View {
 
     @StateObject private var model = FiguresModel()
     @State private var dragStartWidth: Double?
+    /// The Ko-fi capsule's laid-out width, reported up from the title bar. Its
+    /// text is not a constant — the two labels are, but their rendered width
+    /// depends on the system font — so it is measured rather than assumed.
+    @State private var kofiWidth: CGFloat = 0
 
     public init(onHeightChange: @escaping (CGFloat) -> Void = { _ in }) {
         self.onHeightChange = onHeightChange
@@ -81,6 +85,11 @@ public struct WidgetRootView: View {
     private var titleBar: some View {
         ZStack {
             KofiButton(scale: scale)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: KofiWidthKey.self, value: proxy.size.width)
+                    }
+                }
 
             HStack(spacing: 6 * scale) {
                 Text(LayoutMode.title(for: model.rows))
@@ -88,6 +97,7 @@ public struct WidgetRootView: View {
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .frame(maxWidth: titleLimit, alignment: .leading)
 
                 Spacer(minLength: 0)
 
@@ -105,6 +115,14 @@ public struct WidgetRootView: View {
                 }
             }
         }
+        .onPreferenceChange(KofiWidthKey.self) { kofiWidth = $0 }
+    }
+
+    /// How wide the title may grow before it would reach the Ko-fi capsule.
+    /// The title bar spans the panel minus its padding, which is the width the
+    /// capsule is centred in.
+    private var titleLimit: CGFloat {
+        LayoutMode.titleLimit(content: width - pad * 2, kofi: kofiWidth, gap: 6 * scale)
     }
 
     /// The combined total leading, the freshness trailing — one row instead of
@@ -228,6 +246,20 @@ public struct WidgetRootView: View {
                     .onEnded { _ in dragStartWidth = nil }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: grip.alignment)
+    }
+}
+
+/// Carries the Ko-fi capsule's measured width up to the title bar, which is
+/// the only place that can act on it: the capsule and the title are siblings
+/// in a `ZStack`, and SwiftUI gives siblings there no way to size around each
+/// other.
+private struct KofiWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    /// Only one capsule ever reports, so the reduce never has to combine two
+    /// real values — but a max is the honest answer if it ever did.
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
