@@ -11,34 +11,19 @@ struct AppMeterApp: App {
     @AppStorage(WidgetSettings.positionLockedKey) private var positionLocked = false
     @AppStorage(WidgetSettings.widgetVisibleKey) private var widgetVisible = true
 
-    /// A meter dial: arc plus needle. Template image gets tinted by macOS to
-    /// match the menu bar, light or dark.
+    /// A system symbol instead of a hand-drawn path: SF Symbols are hinted by
+    /// Apple for the exact sizes they get drawn at, including menu bar scale,
+    /// which a hand-drawn arc-plus-needle at 16pt could not reliably match —
+    /// the two strokes had too little room to stay visually separate. Template
+    /// rendering still lets macOS tint it for light/dark menu bars.
+    ///
+    /// `gauge.with.needle` is available from macOS 14.0 (per the SF Symbols
+    /// catalog's own availability metadata), which is this package's declared
+    /// floor, so no fallback symbol or nil-handling is needed.
     private static let menuBarIcon: NSImage = {
-        let size = NSSize(width: 16, height: 16)
-        let image = NSImage(size: size, flipped: false) { _ in
-            NSColor.black.setStroke()
-
-            let centre = NSPoint(x: 8, y: 5.5)
-            let arc = NSBezierPath()
-            arc.appendArc(withCenter: centre, radius: 5.5, startAngle: 0, endAngle: 180)
-            arc.lineWidth = 1.6
-            arc.lineCapStyle = .round
-            arc.stroke()
-
-            // Shorter than the radius so the tip stays clear of the arc — at the
-            // brief's original length the needle grazed the arc's inner edge and
-            // the two strokes read as one continuous hook rather than a dial.
-            let needle = NSBezierPath()
-            needle.move(to: centre)
-            needle.line(to: NSPoint(x: 9.7, y: 9.1))
-            needle.lineWidth = 1.6
-            needle.lineCapStyle = .round
-            needle.stroke()
-
-            return true
-        }
-        image.isTemplate = true
-        return image
+        let icon = NSImage(systemSymbolName: "gauge.with.needle", accessibilityDescription: "App Meter")!
+        icon.isTemplate = true
+        return icon
     }()
 
     var body: some Scene {
