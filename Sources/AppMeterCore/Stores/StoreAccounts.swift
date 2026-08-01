@@ -57,7 +57,7 @@ public enum SalesDump {
         if let account = StoreAccounts.appStoreConnect() {
             let client = AppStoreConnectClient(account: account)
             do {
-                let figures = try await AppleInstallsService(client: client).figures()
+                let figures = try await AppleInstallsService(client: client).installs().figures
                 dump(figures, from: "apple")
             } catch {
                 NSLog("[sales] apple failed: %@", error.localizedDescription)

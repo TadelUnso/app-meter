@@ -77,9 +77,13 @@ public final class FiguresModel: ObservableObject {
 
         if let account = StoreAccounts.appStoreConnect() {
             do {
-                byStore[.appStore] = try await AppleInstallsService(
+                let installs = try await AppleInstallsService(
                     client: AppStoreConnectClient(account: account)
-                ).figures()
+                ).installs()
+                byStore[.appStore] = installs.figures
+                if let failure = installs.listingFailure {
+                    newProblems.append("App Store: could not list apps — \(failure)")
+                }
             } catch {
                 newProblems.append("App Store: \(error.localizedDescription)")
             }

@@ -22,6 +22,20 @@ public protocol SalesReportSource: Sendable {
 
 extension AppStoreConnectClient: SalesReportSource {}
 
+/// The App Store side of a refresh: the figures, and anything that went wrong
+/// which was not bad enough to lose them.
+public struct AppleInstalls: Sendable {
+    public let figures: [AppFigures]
+    /// Set when the app listing was refused. The figures are complete; what is
+    /// missing is the names and the bundle ids that pair them with Play.
+    public let listingFailure: String?
+
+    public init(figures: [AppFigures], listingFailure: String? = nil) {
+        self.figures = figures
+        self.listingFailure = listingFailure
+    }
+}
+
 public struct AppleInstallsService: Sendable {
     private let client: any SalesReportSource
     private let history: InstallHistoryStore
@@ -31,7 +45,7 @@ public struct AppleInstallsService: Sendable {
         self.history = history
     }
 
-    public func figures(now: Date = Date()) async throws -> [AppFigures] {
+    public func installs(now: Date = Date()) async throws -> AppleInstalls {
         var totals: [String: Int] = [:]
         var titles = await history.current.titles
         var latestDay: (date: Date, units: [String: Int])?
@@ -90,8 +104,16 @@ public struct AppleInstallsService: Sendable {
             }
         }
 
-        // Empty when the key cannot list apps, which the mapping below tolerates.
-        let known = (try? await client.apps()) ?? [:]
+        var known: [String: AppStoreApp] = [:]
+        var listingFailure: String?
+        do {
+            known = try await client.apps()
+        } catch {
+            // Not fatal: the figures below are complete without it. But a key that is
+            // refused this call is refused it on every refresh, so staying quiet would
+            // leave the panel showing package ids forever with no reason given.
+            listingFailure = error.localizedDescription
+        }
 
         // An app re-created under a new Apple identifier keeps its bundle id,
         // so both identifiers turn up in the history and must be combined.
@@ -126,6 +148,7 @@ public struct AppleInstallsService: Sendable {
             }
         }
 
-        return byID.keys.sorted().map { byID[$0]! }
+        let figures = byID.keys.sorted().map { byID[$0]! }
+        return AppleInstalls(figures: figures, listingFailure: listingFailure)
     }
 }

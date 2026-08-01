@@ -7,11 +7,13 @@ import Testing
 private actor StubSource: SalesReportSource {
     private let reports: [String: SalesReport]
     private let knownApps: [String: AppStoreApp]
+    private let listingFails: Bool
     private(set) var requested: [String] = []
 
-    init(_ reports: [SalesPeriod: SalesReport], apps: [String: AppStoreApp] = [:]) {
+    init(_ reports: [SalesPeriod: SalesReport], apps: [String: AppStoreApp] = [:], listingFails: Bool = false) {
         self.reports = Dictionary(uniqueKeysWithValues: reports.map { ($0.key.cacheKey, $0.value) })
         self.knownApps = apps
+        self.listingFails = listingFails
     }
 
     func report(for period: SalesPeriod) async throws -> SalesReport? {
@@ -19,7 +21,12 @@ private actor StubSource: SalesReportSource {
         return reports[period.cacheKey]
     }
 
-    func apps() async throws -> [String: AppStoreApp] { knownApps }
+    func apps() async throws -> [String: AppStoreApp] {
+        if listingFails {
+            throw AppStoreConnectError.unauthorized
+        }
+        return knownApps
+    }
 
     func requestCount(for period: SalesPeriod) -> Int {
         requested.filter { $0 == period.cacheKey }.count
@@ -62,7 +69,7 @@ struct AppleInstallsServiceTests {
         ])
 
         let figures = try await AppleInstallsService(client: source, history: Self.store())
-            .figures(now: Self.secondOfJanuary)
+            .installs(now: Self.secondOfJanuary).figures
 
         #expect(figures.count == 1)
         #expect(figures[0].lifetime == 145)
@@ -79,7 +86,7 @@ struct AppleInstallsServiceTests {
         ])
 
         let figures = try await AppleInstallsService(client: source, history: Self.store())
-            .figures(now: Self.secondOfJanuary)
+            .installs(now: Self.secondOfJanuary).figures
 
         #expect(figures[0].today == 7)
         #expect(figures[0].asOf == Self.date("2026-01-01T00:00:00Z"))
@@ -92,8 +99,8 @@ struct AppleInstallsServiceTests {
         let history = Self.store()
         let service = AppleInstallsService(client: source, history: history)
 
-        _ = try await service.figures(now: Self.secondOfJanuary)
-        _ = try await service.figures(now: Self.secondOfJanuary)
+        _ = try await service.installs(now: Self.secondOfJanuary).figures
+        _ = try await service.installs(now: Self.secondOfJanuary).figures
 
         #expect(await source.requestCount(for: .yearly(2025)) == 1)
     }
@@ -105,8 +112,8 @@ struct AppleInstallsServiceTests {
         let source = StubSource([today: Self.report(units: 2)])
         let service = AppleInstallsService(client: source, history: Self.store())
 
-        _ = try await service.figures(now: Self.secondOfJanuary)
-        _ = try await service.figures(now: Self.secondOfJanuary)
+        _ = try await service.installs(now: Self.secondOfJanuary).figures
+        _ = try await service.installs(now: Self.secondOfJanuary).figures
 
         #expect(await source.requestCount(for: today) == 2)
     }
@@ -120,8 +127,8 @@ struct AppleInstallsServiceTests {
         ])
         let service = AppleInstallsService(client: source, history: Self.store())
 
-        let first = try await service.figures(now: Self.secondOfJanuary)
-        let second = try await service.figures(now: Self.secondOfJanuary)
+        let first = try await service.installs(now: Self.secondOfJanuary).figures
+        let second = try await service.installs(now: Self.secondOfJanuary).figures
 
         #expect(first[0].lifetime == 42)
         #expect(second[0].lifetime == 42)
@@ -141,7 +148,7 @@ struct AppleInstallsServiceTests {
         ])
 
         let figures = try await AppleInstallsService(client: source, history: Self.store())
-            .figures(now: Self.thirdOfFebruary)
+            .installs(now: Self.thirdOfFebruary).figures
 
         #expect(figures.count == 1)
         #expect(figures[0].lifetime == 17)
@@ -159,8 +166,8 @@ struct AppleInstallsServiceTests {
         let history = Self.store()
         let service = AppleInstallsService(client: source, history: history)
 
-        _ = try await service.figures(now: Self.thirdOfFebruary)
-        _ = try await service.figures(now: Self.thirdOfFebruary)
+        _ = try await service.installs(now: Self.thirdOfFebruary).figures
+        _ = try await service.installs(now: Self.thirdOfFebruary).figures
 
         #expect(await source.requestCount(for: .monthly(year: 2026, month: 1)) == 2)
         // The days it fell back to are real answers, so those are cached.
@@ -169,7 +176,7 @@ struct AppleInstallsServiceTests {
 
     @Test func reportsNothingWhenNoPeriodHasFigures() async throws {
         let figures = try await AppleInstallsService(client: StubSource([:]), history: Self.store())
-            .figures(now: Self.secondOfJanuary)
+            .installs(now: Self.secondOfJanuary).figures
         #expect(figures.isEmpty)
     }
 
@@ -183,7 +190,7 @@ struct AppleInstallsServiceTests {
         ])
 
         let figures = try await AppleInstallsService(client: source, history: Self.store())
-            .figures(now: Self.secondOfJanuary)
+            .installs(now: Self.secondOfJanuary).figures
 
         #expect(figures.map(\.id) == ["111", "222"])
         #expect(figures.map(\.lifetime) == [10, 25])
@@ -199,7 +206,7 @@ struct AppleInstallsServiceTests {
         )
 
         let figures = try await AppleInstallsService(client: source, history: Self.store())
-            .figures(now: Self.secondOfJanuary)
+            .installs(now: Self.secondOfJanuary).figures
 
         #expect(figures[0].id == "com.biuroznakhidok.app")
         #expect(figures[0].name == "Бюро Знахідок")
@@ -210,7 +217,7 @@ struct AppleInstallsServiceTests {
         let source = StubSource([.yearly(2025): Self.report(units: 40)], apps: [:])
 
         let figures = try await AppleInstallsService(client: source, history: Self.store())
-            .figures(now: Self.secondOfJanuary)
+            .installs(now: Self.secondOfJanuary).figures
 
         #expect(figures[0].id == "6789246448")
         #expect(figures[0].name == "Бюро Знахідок")
@@ -234,10 +241,39 @@ struct AppleInstallsServiceTests {
         )
 
         let figures = try await AppleInstallsService(client: source, history: Self.store())
-            .figures(now: Self.secondOfJanuary)
+            .installs(now: Self.secondOfJanuary).figures
 
         #expect(figures.count == 1)
         #expect(figures[0].id == "com.example.finder")
         #expect(figures[0].lifetime == 42)
+    }
+
+    /// A key scoped to sales only reads reports and is refused the app listing.
+    /// The figures are still right, so they stay — but the panel has to say why
+    /// the names look like package ids and why the stores did not pair up.
+    @Test func aRefusedListingIsReportedWithoutLosingFigures() async throws {
+        let source = StubSource([.yearly(2025): Self.report(units: 40)], listingFails: true)
+
+        let installs = try await AppleInstallsService(client: source, history: Self.store())
+            .installs(now: Self.secondOfJanuary)
+
+        #expect(installs.figures.count == 1)
+        #expect(installs.figures[0].lifetime == 40)
+        #expect(installs.figures[0].id == "6789246448")
+        #expect(installs.listingFailure != nil)
+    }
+
+    /// Nothing to report when the listing works.
+    @Test func aWorkingListingReportsNoProblem() async throws {
+        let source = StubSource(
+            [.yearly(2025): Self.report(units: 40)],
+            apps: ["6789246448": AppStoreApp(bundleID: "com.biuroznakhidok.app", name: "Бюро Знахідок")]
+        )
+
+        let installs = try await AppleInstallsService(client: source, history: Self.store())
+            .installs(now: Self.secondOfJanuary)
+
+        #expect(installs.listingFailure == nil)
+        #expect(installs.figures[0].id == "com.biuroznakhidok.app")
     }
 }
