@@ -119,3 +119,21 @@ struct GooglePlayCredentialsTests {
         #expect(GooglePlayCredentials.bucketName(from: "gs:///stats/installs") == nil)
     }
 }
+
+@Suite("Google Analytics identifiers")
+struct GoogleAnalyticsCredentialsTests {
+    @Test func propertyAndStreamIDsAreDigits() {
+        #expect(GoogleAnalyticsCredentials.isValidPropertyID(" 123456789 "))
+        #expect(GoogleAnalyticsCredentials.isValidStreamID("9876543210"))
+        #expect(!GoogleAnalyticsCredentials.isValidPropertyID("properties/123456789"))
+        #expect(!GoogleAnalyticsCredentials.isValidStreamID(""))
+    }
+
+    @Test func packageNameHasJavaStyleSegments() {
+        #expect(GoogleAnalyticsCredentials.isValidPackageName("com.biuroznakhidok.app"))
+        #expect(GoogleAnalyticsCredentials.isValidPackageName("com.example.app_2"))
+        #expect(!GoogleAnalyticsCredentials.isValidPackageName("example"))
+        #expect(!GoogleAnalyticsCredentials.isValidPackageName("com.2example.app"))
+        #expect(!GoogleAnalyticsCredentials.isValidPackageName("com.example-app"))
+    }
+}

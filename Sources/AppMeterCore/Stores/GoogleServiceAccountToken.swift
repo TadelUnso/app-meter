@@ -38,14 +38,15 @@ public enum GoogleServiceAccountToken {
         clientEmail: String,
         privateKeyPEM: String,
         now: Date,
-        lifetime: TimeInterval = maximumLifetime
+        lifetime: TimeInterval = maximumLifetime,
+        scope requestedScope: String = GoogleServiceAccountToken.scope
     ) throws -> String {
         let key = try secKey(fromPEM: privateKeyPEM)
 
         let header: [String: String] = ["alg": "RS256", "typ": "JWT"]
         let payload: [String: Any] = [
             "iss": clientEmail,
-            "scope": scope,
+            "scope": requestedScope,
             "aud": audience,
             "iat": Int(now.timeIntervalSince1970),
             "exp": Int(now.addingTimeInterval(min(lifetime, maximumLifetime)).timeIntervalSince1970),

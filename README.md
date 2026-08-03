@@ -118,14 +118,38 @@ exported to.
    **APIs & Services → Library** — without it every read is refused regardless
    of permissions.
 
+### Google Analytics first-open tail (optional)
+
+Google's Play reports can arrive several days late. App Meter can fill that
+unconfirmed gap with Firebase Analytics' automatically collected `first_open`
+event. It keeps the Play report as the authoritative lifetime total and adds
+only events dated after Play's newest report day; once Play catches up, those
+days automatically leave the Analytics query window.
+
+1. Add Firebase Analytics to the Android app and publish that build. Events
+   cannot exist for launches that happened before the SDK was present.
+2. In **Google Analytics → Admin → Property access management**, add the same
+   service-account email used above with the **Viewer** role.
+3. Enable the **Google Analytics Data API** in the service account's Google
+   Cloud project.
+4. In App Meter's optional Google Analytics section, enter the numeric
+   **Property ID**, the Android **Data stream ID**, and the Play package name.
+   Both IDs are shown under **Admin → Data streams → your Android app** (the
+   property ID is also shown under **Property details**).
+
+`first_open` means a first launch after an install or reinstall, not a
+Play-confirmed unique purchaser. It is intentionally presented only as the
+recent, unconfirmed tail and falls back to the Play-only number if Analytics is
+unavailable.
+
 ### Where the credentials end up
 
 The `.p8` and the service account JSON go into the login Keychain, under the
 service `com.sbezbabnykh.app-meter`. Once they are in, the copies you downloaded
 can be filed away with the rest of your secrets and removed from disk.
 
-The non-secret half — issuer id, key id, vendor number, bucket, refresh
-interval — is stored as ordinary preferences in
+The non-secret half — issuer id, key id, vendor number, bucket, optional GA4
+identifiers, refresh interval — is stored as ordinary preferences in
 `~/Library/Preferences/com.sbezbabnykh.app-meter.plist`. Apple's report history
 cache lives in `~/Library/Application Support/App Meter/`. Deleting that file
 makes App Meter rebuild its history from scratch on the next refresh — worth
@@ -134,10 +158,12 @@ with no report cached is never re-checked on its own.
 
 ## Freshness
 
-Both stores publish reports on their own schedule, and App Meter is never
-fresher than they are: Apple's daily reports land about a day behind, Google's
-about three to seven days. Polling faster than hourly only spends request quota
-re-reading yesterday's figures.
+Both stores publish reports on their own schedule: Apple's daily reports land
+about a day behind, and Google's can trail by several days. With the optional
+Firebase Analytics setup, App Meter fills only Google's missing tail with
+near-live first launches; without it, the panel is never fresher than the store
+report. Polling faster than hourly mostly spends request quota re-reading the
+same figures.
 
 ## Update
 
