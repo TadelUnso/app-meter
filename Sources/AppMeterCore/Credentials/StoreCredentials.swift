@@ -93,6 +93,27 @@ public enum GooglePlayCredentials {
     }
 }
 
+/// The non-secret identifiers for the optional GA4 first-open tail.
+public enum GoogleAnalyticsCredentials {
+    public static func isValidPropertyID(_ value: String) -> Bool {
+        let trimmed = value.trimmed
+        return !trimmed.isEmpty && trimmed.allSatisfy(\.isNumberASCII)
+    }
+
+    public static func isValidStreamID(_ value: String) -> Bool {
+        isValidPropertyID(value)
+    }
+
+    public static func isValidPackageName(_ value: String) -> Bool {
+        let parts = value.trimmed.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count >= 2 else { return false }
+        return parts.allSatisfy { part in
+            guard let first = part.first, first.isASCII, first.isLetter else { return false }
+            return part.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_") }
+        }
+    }
+}
+
 private extension String {
     var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
 }

@@ -40,6 +40,14 @@ public enum WidgetSettings {
     /// exports reports to. The service account JSON is a Keychain item.
     public static let googlePlayBucketKey = "googlePlayBucket"
 
+    /// Optional near-live tail for Play figures. The same Google service
+    /// account is used, after it has been granted Viewer access to this GA4
+    /// property. The stream isolates one Android app inside the property, and
+    /// the package says which Play app that stream supplements.
+    public static let googleAnalyticsPropertyKey = "googleAnalyticsProperty"
+    public static let googleAnalyticsStreamKey = "googleAnalyticsStream"
+    public static let googleAnalyticsPackageKey = "googleAnalyticsPackage"
+
     public static func clampWidth(_ width: Double) -> Double {
         min(max(width, minWidth), maxWidth)
     }

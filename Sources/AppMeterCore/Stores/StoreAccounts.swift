@@ -7,6 +7,11 @@ import Foundation
 /// of the four fields fails at the far end with an error that says nothing
 /// about which field is missing.
 public enum StoreAccounts {
+    public struct GoogleAnalytics: Sendable {
+        public let package: String
+        public let client: GoogleAnalyticsClient
+    }
+
     public static func appStoreConnect(defaults: UserDefaults = .standard) -> AppStoreConnectAccount? {
         guard let issuerID = defaults.string(forKey: WidgetSettings.ascIssuerIdKey), !issuerID.isEmpty,
               let keyID = defaults.string(forKey: WidgetSettings.ascKeyIdKey), !keyID.isEmpty,
@@ -39,6 +44,35 @@ public enum StoreAccounts {
         }
 
         return GooglePlayClient(account: account, privateKeyPEM: pem, bucket: bucket)
+    }
+
+    /// The optional GA4 first-open source. It reuses the Play service account,
+    /// but GA4 must separately grant that email Viewer access to the property.
+    public static func googleAnalytics(defaults: UserDefaults = .standard) -> GoogleAnalytics? {
+        guard let json = KeychainStore.load(.googlePlayServiceAccount),
+              let account = GoogleServiceAccount(json: json),
+              let property = defaults.string(forKey: WidgetSettings.googleAnalyticsPropertyKey),
+              GoogleAnalyticsCredentials.isValidPropertyID(property),
+              let stream = defaults.string(forKey: WidgetSettings.googleAnalyticsStreamKey),
+              GoogleAnalyticsCredentials.isValidStreamID(stream),
+              let package = defaults.string(forKey: WidgetSettings.googleAnalyticsPackageKey),
+              GoogleAnalyticsCredentials.isValidPackageName(package)
+        else { return nil }
+
+        struct KeyOnly: Decodable { let private_key: String }
+        guard let pem = (try? JSONDecoder().decode(KeyOnly.self, from: Data(json.utf8)))?.private_key else {
+            return nil
+        }
+
+        return GoogleAnalytics(
+            package: package.trimmingCharacters(in: .whitespacesAndNewlines),
+            client: GoogleAnalyticsClient(
+                account: account,
+                privateKeyPEM: pem,
+                propertyID: property.trimmingCharacters(in: .whitespacesAndNewlines),
+                streamID: stream.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+        )
     }
 }
 

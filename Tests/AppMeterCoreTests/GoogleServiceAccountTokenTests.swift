@@ -66,6 +66,17 @@ struct GoogleServiceAccountTokenTests {
         #expect(payload["exp"] as? Int == 1_700_000_000 + 3600)
     }
 
+    @Test func payloadCanAskForAnalyticsReadOnly() throws {
+        let token = try GoogleServiceAccountToken.make(
+            clientEmail: Self.email,
+            privateKeyPEM: Self.pem,
+            now: Date(timeIntervalSince1970: 1_700_000_000),
+            scope: GoogleAnalyticsClient.scope
+        )
+        let payload = try Self.segment(token, 1)
+        #expect(payload["scope"] as? String == GoogleAnalyticsClient.scope)
+    }
+
     @Test func clampsAnOverlongLifetime() throws {
         let payload = try Self.segment(try Self.token(lifetime: 86_400), 1)
         #expect(payload["exp"] as? Int == 1_700_000_000 + 3600)
