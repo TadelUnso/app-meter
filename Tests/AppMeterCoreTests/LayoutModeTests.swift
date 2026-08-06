@@ -91,7 +91,7 @@ struct LayoutModeTests {
             appStore: Self.figures(store: .appStore, lifetime: 15, today: 1),
             googlePlay: Self.figures(store: .googlePlay, lifetime: 9, today: 0)
         )
-        #expect(LayoutMode.combinedTotal(for: [both]) == "24 together · +1 today")
+        #expect(LayoutMode.combinedTotal(for: [both]) == "24 together")
 
         let oneStore = AppRow(id: "a", name: "A", appStore: both.appStore, googlePlay: nil)
         #expect(LayoutMode.combinedTotal(for: [oneStore]) == nil)

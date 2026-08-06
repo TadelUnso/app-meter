@@ -21,5 +21,4 @@ public struct AppRow: Equatable, Sendable, Identifiable {
     /// Both stores together. Only the single-app layout shows this — summing
     /// across different apps would be a number with no meaning.
     public var lifetime: Int { (appStore?.lifetime ?? 0) + (googlePlay?.lifetime ?? 0) }
-    public var today: Int { (appStore?.today ?? 0) + (googlePlay?.today ?? 0) }
 }
