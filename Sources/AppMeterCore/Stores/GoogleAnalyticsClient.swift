@@ -30,8 +30,27 @@ public struct GoogleAnalyticsFirstOpen: Equatable, Sendable {
     }
 }
 
+/// A report's rows together with the clock they were dated by.
+///
+/// The dates in `days` are UTC-anchored labels, like every other day the panel
+/// handles. The zone is what GA4 used to decide which events fell on which of
+/// those labels, and the caller needs it to work out which label is the current
+/// day — a question UTC cannot answer for a property that is not on UTC.
+public struct GoogleAnalyticsFirstOpens: Equatable, Sendable {
+    public let days: [GoogleAnalyticsFirstOpen]
+    public let timeZone: TimeZone
+
+    public init(days: [GoogleAnalyticsFirstOpen], timeZone: TimeZone) {
+        self.days = days
+        self.timeZone = timeZone
+    }
+}
+
 public protocol GoogleAnalyticsFirstOpenSource: Sendable {
-    func firstOpens(from start: Date, through end: Date) async throws -> [GoogleAnalyticsFirstOpen]
+    /// Everything from `start` up to and including the property's current day.
+    /// There is no end parameter: the end is always "as recent as GA4 has", and
+    /// only the property knows when its own day ends.
+    func firstOpens(since start: Date) async throws -> GoogleAnalyticsFirstOpens
 }
 
 /// Reads Android `first_open` events from the GA4 Data API. Firebase logs the
@@ -62,9 +81,7 @@ public struct GoogleAnalyticsClient: GoogleAnalyticsFirstOpenSource, Sendable {
         self.now = now
     }
 
-    public func firstOpens(from start: Date, through end: Date) async throws -> [GoogleAnalyticsFirstOpen] {
-        guard start <= end else { return [] }
-
+    public func firstOpens(since start: Date) async throws -> GoogleAnalyticsFirstOpens {
         let assertion = try GoogleServiceAccountToken.make(
             clientEmail: account.clientEmail,
             privateKeyPEM: privateKeyPEM,
@@ -79,7 +96,7 @@ public struct GoogleAnalyticsClient: GoogleAnalyticsFirstOpenSource, Sendable {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(
-            withJSONObject: Self.reportBody(from: start, through: end, streamID: streamID)
+            withJSONObject: Self.reportBody(from: start, streamID: streamID)
         )
 
         let (data, response) = try await session.data(for: request)
@@ -121,9 +138,14 @@ public struct GoogleAnalyticsClient: GoogleAnalyticsFirstOpenSource, Sendable {
         return token.access_token
     }
 
-    static func reportBody(from start: Date, through end: Date, streamID: String) -> [String: Any] {
+    /// `startDate` is formatted in UTC because that is the calendar the date
+    /// came from: it is Play's newest report day plus one, and Play's report
+    /// days are parsed as UTC labels. `endDate` is GA4's own `today` keyword
+    /// rather than a date worked out here — the property resolves it against
+    /// its own clock, which is the only clock that knows when its day ends.
+    static func reportBody(from start: Date, streamID: String) -> [String: Any] {
         [
-            "dateRanges": [["startDate": requestDay.string(from: start), "endDate": requestDay.string(from: end)]],
+            "dateRanges": [["startDate": requestDay.string(from: start), "endDate": "today"]],
             "dimensions": [["name": "date"]],
             "metrics": [["name": "eventCount"]],
             "dimensionFilter": [
@@ -139,21 +161,23 @@ public struct GoogleAnalyticsClient: GoogleAnalyticsFirstOpenSource, Sendable {
         ]
     }
 
-    static func firstOpens(from data: Data) throws -> [GoogleAnalyticsFirstOpen] {
+    static func firstOpens(from data: Data) throws -> GoogleAnalyticsFirstOpens {
         struct Response: Decodable {
             struct Value: Decodable { let value: String }
             struct Row: Decodable {
                 let dimensionValues: [Value]
                 let metricValues: [Value]
             }
+            struct Metadata: Decodable { let timeZone: String? }
             let rows: [Row]?
+            let metadata: Metadata?
         }
 
         guard let response = try? JSONDecoder().decode(Response.self, from: data) else {
             throw GoogleAnalyticsError.malformedResponse
         }
 
-        return try (response.rows ?? []).map { row in
+        let days = try (response.rows ?? []).map { row in
             guard let dateText = row.dimensionValues.first?.value,
                   let date = responseDay.date(from: dateText),
                   let countText = row.metricValues.first?.value,
@@ -161,6 +185,14 @@ public struct GoogleAnalyticsClient: GoogleAnalyticsFirstOpenSource, Sendable {
             else { throw GoogleAnalyticsError.malformedResponse }
             return GoogleAnalyticsFirstOpen(date: date, count: count)
         }
+
+        // An unreadable or absent zone falls back to UTC rather than failing:
+        // the counts are still right, and UTC is what the rest of the panel
+        // assumes anyway. Only the "which row is today" question degrades.
+        let zone = response.metadata?.timeZone.flatMap(TimeZone.init(identifier:))
+            ?? TimeZone(identifier: "UTC")!
+
+        return GoogleAnalyticsFirstOpens(days: days, timeZone: zone)
     }
 
     private static let requestDay: DateFormatter = dayFormatter("yyyy-MM-dd")
