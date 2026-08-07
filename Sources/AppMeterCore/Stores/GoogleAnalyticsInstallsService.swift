@@ -17,17 +17,40 @@ public struct GoogleAnalyticsInstallsService: Sendable {
               start <= now
         else { return play }
 
-        let days = try await client.firstOpens(from: start, through: now)
-        let today = Calendar.utc.startOfDay(for: now)
+        let report = try await client.firstOpens(since: start)
+        let today = Self.day(of: now, in: report.timeZone)
 
         return AppFigures(
             id: play.id,
             name: play.name,
             store: play.store,
-            lifetime: play.lifetime + days.reduce(0) { $0 + $1.count },
-            today: days.filter { Calendar.utc.isDate($0.date, inSameDayAs: today) }.reduce(0) { $0 + $1.count },
+            lifetime: play.lifetime + report.days.reduce(0) { $0 + $1.count },
+            // Both sides of this are UTC-anchored labels, so they compare
+            // exactly; nothing here needs a same-day calendar comparison.
+            today: report.days.filter { $0.date == today }.reduce(0) { $0 + $1.count },
             asOf: today
         )
+    }
+
+    /// Which day `now` falls on for a property keeping `zone`, expressed the way
+    /// every day in this panel is expressed: midnight UTC of that calendar date.
+    ///
+    /// Reading the calendar date in the property's zone and re-anchoring it in
+    /// UTC is the whole point. A property three hours ahead has begun a new day
+    /// while UTC is still on the old one, and GA4 has already filed that day's
+    /// events under tomorrow's label — so asking UTC what day it is would look
+    /// for a label GA4 will not use for another three hours.
+    /// Pure, hence testable without a network or a clock.
+    static func day(of now: Date, in zone: TimeZone) -> Date {
+        var property = Calendar(identifier: .gregorian)
+        property.timeZone = zone
+        let parts = property.dateComponents([.year, .month, .day], from: now)
+
+        // Force-unwrapped: the components come from a real date, so they always
+        // describe a day that exists.
+        return Calendar.utc.date(
+            from: DateComponents(year: parts.year, month: parts.month, day: parts.day)
+        )!
     }
 }
 
