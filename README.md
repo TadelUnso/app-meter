@@ -205,6 +205,39 @@ make test   # run the test suite
 > a bare `swift test` silently runs zero tests and exits 0 — the Makefile passes
 > the toolchain flags required for Swift Testing from Command Line Tools.
 
+`make app` assembles a bundle signed ad-hoc. That is enough to run it yourself
+and not enough to hand to anyone else — Gatekeeper wants a Developer ID and a
+notarisation ticket, which only the release workflow produces.
+
+## Release
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`: build, Developer ID
+signing, DMG, notarisation, Sparkle signature, appcast, GitHub release.
+
+One-time setup, all of it outside this repository:
+
+1. Generate the Sparkle key pair with the framework's `generate_keys`. The
+   private half stays in your login Keychain and must never be committed; put a
+   base64 copy in the `SPARKLE_PRIVATE_KEY` repository secret, and the public
+   half in `Resources/Info.plist` as `SUPublicEDKey`.
+2. Add the remaining repository secrets: `MACOS_CERTIFICATE` (Developer ID
+   Application `.p12`, base64), `MACOS_CERTIFICATE_PWD`, `APPLE_TEAM_ID`,
+   `APPLE_ID`, `APPLE_APP_PASSWORD` (an app-specific password, not the Apple ID
+   password).
+
+Then, per release:
+
+1. Bump all three version fields together — `CoreInfo.version`, and the plist's
+   `CFBundleShortVersionString` and `CFBundleVersion`. The first two are the
+   same string; `CFBundleVersion` is the integer Sparkle compares, so it has to
+   grow every time or installed copies will never be offered the update.
+2. Commit, then `git tag v0.2.0 && git push origin v0.2.0`.
+
+The workflow's preflight refuses the release if the three version fields
+disagree with each other or with the tag, if `SUPublicEDKey` is missing, or if
+`CFBundleVersion` did not move past the one already in `appcast.xml`. Each of
+those ships a release that looks fine and quietly updates nobody.
+
 ## Architecture
 
 ```

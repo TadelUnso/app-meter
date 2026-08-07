@@ -53,15 +53,20 @@ public enum LayoutMode: Equatable {
         return max(0, (content - kofi) / 2 - gap)
     }
 
-    /// The two stores of one app, added up — or nil when there is nothing
-    /// meaningful to add. Lives here rather than in the view because the footer
-    /// that shows it is built beside the freshness line, a level above the
-    /// layout that knows about rows.
+    /// The two stores' lifetime totals of one app, added up — or nil when there
+    /// is nothing meaningful to add. Lives here rather than in the view because
+    /// the footer that shows it is built beside the freshness line, a level
+    /// above the layout that knows about rows.
+    ///
+    /// Lifetimes only. The day's movement is not summed here, because the two
+    /// stores' `today` figures cover their own newest report day and those days
+    /// are rarely the same one — the tiles say which day each figure is for,
+    /// and a footer adding them under one label could not.
     public static func combinedTotal(for rows: [AppRow]) -> String? {
         guard rows.count == 1, let row = rows.first,
               row.appStore != nil, row.googlePlay != nil
         else { return nil }
-        return "\(Fmt.installs(row.lifetime)) together · \(Fmt.delta(row.today)) today"
+        return "\(Fmt.installs(row.lifetime)) together"
     }
 }
 

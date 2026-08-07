@@ -26,7 +26,6 @@ struct FiguresModelTests {
         #expect(rows.count == 1)
         #expect(rows[0].name == "Finder")
         #expect(rows[0].lifetime == 15)
-        #expect(rows[0].today == 3)
     }
 
     /// Different identifiers are different apps, however alike the names look.

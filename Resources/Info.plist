@@ -22,11 +22,16 @@
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
-	<!-- Sparkle: SUEnableAutomaticChecks and SUPublicEDKey are added once the
-	     Ed25519 key pair exists (Sparkle's generate_keys) and the first release
-	     has been cut. A placeholder key here would be worse than none: Sparkle
-	     would accept the config and then reject every update it downloads. -->
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/TadelUnso/app-meter/main/appcast.xml</string>
+	<!-- The public half of this app's own Ed25519 pair. The private half lives
+	     only in the SPARKLE_PRIVATE_KEY repository secret, which is what the
+	     release workflow signs the DMG with — it is deliberately not in any
+	     Keychain, so it cannot collide with the key Sparkle's generate_keys
+	     already stores for another app on the same Mac. -->
+	<key>SUPublicEDKey</key>
+	<string>vn+ihK8dkoTM+2T/bX3zNZmiTNBGN4o0xkby9dDkurk=</string>
 </dict>
 </plist>
