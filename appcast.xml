@@ -5,7 +5,18 @@
         <link>https://github.com/TadelUnso/app-meter</link>
         <description>Install counts desktop widget for macOS</description>
         <language>en</language>
-        <!-- Items are appended by the release workflow; an empty channel means
-             no update is offered, which is correct until the first release. -->
+        <item>
+            <title>App Meter 0.1.0</title>
+            <pubDate>Fri, 07 Aug 2026 07:56:54 +0000</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/TadelUnso/app-meter/releases/download/v0.1.0/AppMeter.dmg"
+                length="1686869"
+                type="application/octet-stream"
+                sparkle:edSignature="DcuMMfz7R3BBj03m8RPhgT44kpj7tyBP/QvOjCS2vuzxgxH8vEyK1q9DcBqncftiJp7XJK/RnEfnMUYUv9L7Dg=="
+            />
+        </item>
     </channel>
 </rss>
