@@ -13,9 +13,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>0.1.1</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
@@ -26,11 +26,6 @@
 	<true/>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/TadelUnso/app-meter/main/appcast.xml</string>
-	<!-- The public half of this app's own Ed25519 pair. The private half lives
-	     only in the SPARKLE_PRIVATE_KEY repository secret, which is what the
-	     release workflow signs the DMG with — it is deliberately not in any
-	     Keychain, so it cannot collide with the key Sparkle's generate_keys
-	     already stores for another app on the same Mac. -->
 	<key>SUPublicEDKey</key>
 	<string>vn+ihK8dkoTM+2T/bX3zNZmiTNBGN4o0xkby9dDkurk=</string>
 </dict>
