@@ -117,18 +117,7 @@ public final class FiguresModel: ObservableObject {
 
         if let client = StoreAccounts.googlePlay() {
             do {
-                var figures = try await PlayInstallsService(client: client).figures()
-                if let analytics = StoreAccounts.googleAnalytics(),
-                   let index = figures.firstIndex(where: { $0.id == analytics.package }) {
-                    do {
-                        figures[index] = try await GoogleAnalyticsInstallsService(
-                            client: analytics.client
-                        ).supplement(figures[index])
-                    } catch {
-                        newProblems.append("Google Analytics: \(error.localizedDescription)")
-                    }
-                }
-                byStore[.googlePlay] = figures
+                byStore[.googlePlay] = try await PlayInstallsService(client: client).figures()
                 answered = true
             } catch {
                 newProblems.append("Google Play: \(error.localizedDescription)")

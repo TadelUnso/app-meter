@@ -16,9 +16,6 @@ public struct SettingsView: View {
     @AppStorage(WidgetSettings.ascKeyIdKey) private var ascKeyID = ""
     @AppStorage(WidgetSettings.ascVendorNumberKey) private var ascVendorNumber = ""
     @AppStorage(WidgetSettings.googlePlayBucketKey) private var googlePlayBucket = ""
-    @AppStorage(WidgetSettings.googleAnalyticsPropertyKey) private var googleAnalyticsProperty = ""
-    @AppStorage(WidgetSettings.googleAnalyticsStreamKey) private var googleAnalyticsStream = ""
-    @AppStorage(WidgetSettings.googleAnalyticsPackageKey) private var googleAnalyticsPackage = ""
     @AppStorage(WidgetSettings.refreshIntervalKey) private var refreshInterval = WidgetSettings.defaultRefreshInterval
 
     /// Mirrors of the keychain, refreshed on appear and after every write. The
@@ -34,7 +31,6 @@ public struct SettingsView: View {
         Form {
             appStoreSection
             googlePlaySection
-            googleAnalyticsSection
 
             Section("Refresh") {
                 Picker("Check for new figures", selection: $refreshInterval) {
@@ -116,35 +112,6 @@ public struct SettingsView: View {
                 isValid: { GooglePlayCredentials.bucketName(from: $0) != nil },
                 hint: "Play Console → Download reports → Copy Cloud Storage URI. Paste it exactly as copied."
             )
-        }
-    }
-
-    private var googleAnalyticsSection: some View {
-        Section("Google Analytics (optional)") {
-            field(
-                "GA4 property ID",
-                text: $googleAnalyticsProperty,
-                prompt: "123456789",
-                isValid: GoogleAnalyticsCredentials.isValidPropertyID,
-                hint: "Analytics Admin → Property details. Grant the service account above Viewer access to this property."
-            )
-            field(
-                "Data stream ID",
-                text: $googleAnalyticsStream,
-                prompt: "9876543210",
-                isValid: GoogleAnalyticsCredentials.isValidStreamID,
-                hint: "Analytics Admin → Data streams → your Android app. This keeps other Android apps out of the count."
-            )
-            field(
-                "Android package",
-                text: $googleAnalyticsPackage,
-                prompt: "com.example.app",
-                isValid: GoogleAnalyticsCredentials.isValidPackageName,
-                hint: "The package name shown for the same app in Play Console."
-            )
-            Text("Adds Firebase first_open events only after Play's newest confirmed report day, so delayed Play reports are not deliberately counted twice.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
     }
 
