@@ -10,6 +10,7 @@ import SwiftUI
 /// which measures again: a loop that never settles.
 public struct WidgetRootView: View {
     private let onHeightChange: (CGFloat) -> Void
+    private let onMenu: () -> Void
 
     @AppStorage(WidgetSettings.widgetWidthKey) private var widgetWidth = WidgetSettings.defaultWidth
     @AppStorage(WidgetSettings.positionLockedKey) private var positionLocked = false
@@ -22,8 +23,12 @@ public struct WidgetRootView: View {
     /// depends on the system font — so it is measured rather than assumed.
     @State private var kofiWidth: CGFloat = 0
 
-    public init(onHeightChange: @escaping (CGFloat) -> Void = { _ in }) {
+    public init(
+        onHeightChange: @escaping (CGFloat) -> Void = { _ in },
+        onMenu: @escaping () -> Void = {}
+    ) {
         self.onHeightChange = onHeightChange
+        self.onMenu = onMenu
     }
 
     /// Everything scales from the 520 pt design width, so the composition is
@@ -102,6 +107,18 @@ public struct WidgetRootView: View {
                 Spacer(minLength: 0)
 
                 HStack(spacing: 2 * scale) {
+                    // The menu's second entrance. macOS can decline to show the
+                    // menu bar icon — a full menu bar is enough — and without a
+                    // way in from the panel itself the widget would then have
+                    // no Settings and no Quit.
+                    Button {
+                        onMenu()
+                    } label: {
+                        controlIcon("gearshape.fill", tint: Theme.dim)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Settings, updates and quit")
+
                     Button {
                         positionLocked.toggle()
                     } label: {
