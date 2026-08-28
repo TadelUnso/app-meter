@@ -4,14 +4,21 @@ import Testing
 
 @Suite("Figures grouping")
 struct FiguresModelTests {
-    private static func app(_ name: String, _ store: Store, id: String, lifetime: Int = 1, today: Int = 0) -> AppFigures {
+    private static func app(
+        _ name: String,
+        _ store: Store,
+        id: String,
+        lifetime: Int = 1,
+        today: Int = 0,
+        asOf: Date = Date(timeIntervalSince1970: 0)
+    ) -> AppFigures {
         AppFigures(
             id: id,
             name: name,
             store: store,
             lifetime: lifetime,
             today: today,
-            asOf: Date(timeIntervalSince1970: 0)
+            asOf: asOf
         )
     }
 
@@ -120,5 +127,25 @@ struct FiguresModelTests {
             ],
         ])
         #expect(rows.map(\.id) == ["com.acme.finder", "com.zebra.finder"])
+    }
+
+    @Test func warnsWhenGooglePlayHasNotPostedWithinSevenDays() {
+        let asOf = Date(timeIntervalSince1970: 1_000_000)
+        let figures = [Self.app("Finder", .googlePlay, id: "com.example.finder", asOf: asOf)]
+
+        #expect(FiguresModel.googlePlayStalenessProblem(
+            figures,
+            now: asOf.addingTimeInterval(8 * 86_400)
+        ) == "Google Play reports are stale — oldest data is 12 Jan.")
+    }
+
+    @Test func acceptsGooglePlayDataInsideTheSevenDayWindow() {
+        let asOf = Date(timeIntervalSince1970: 1_000_000)
+        let figures = [Self.app("Finder", .googlePlay, id: "com.example.finder", asOf: asOf)]
+
+        #expect(FiguresModel.googlePlayStalenessProblem(
+            figures,
+            now: asOf.addingTimeInterval(7 * 86_400)
+        ) == nil)
     }
 }

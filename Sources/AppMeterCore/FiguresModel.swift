@@ -117,7 +117,11 @@ public final class FiguresModel: ObservableObject {
 
         if let client = StoreAccounts.googlePlay() {
             do {
-                byStore[.googlePlay] = try await PlayInstallsService(client: client).figures()
+                let figures = try await PlayInstallsService(client: client).figures()
+                byStore[.googlePlay] = figures
+                if let problem = Self.googlePlayStalenessProblem(figures, now: Date()) {
+                    newProblems.append(problem)
+                }
                 answered = true
             } catch {
                 newProblems.append("Google Play: \(error.localizedDescription)")
@@ -148,6 +152,22 @@ public final class FiguresModel: ObservableObject {
     nonisolated static func retainedAppleFigures(existing: [AppFigures]?, incoming: AppleInstalls) -> [AppFigures] {
         guard !incoming.isComplete, let existing else { return incoming.figures }
         return existing
+    }
+
+    /// Google's own contract says Cloud Storage statistics are posted within
+    /// three to seven days. A successful fetch older than that is still a bad
+    /// answer: the request is fresh, but the export behind it has stopped.
+    /// Keep the last confirmed figure visible and say so explicitly instead of
+    /// letting the footer's recent refresh time make old Play data look current.
+    nonisolated static func googlePlayStalenessProblem(
+        _ figures: [AppFigures],
+        now: Date
+    ) -> String? {
+        guard let oldest = figures.compactMap(\.asOf).min(),
+              now.timeIntervalSince(oldest) > 7 * 86_400
+        else { return nil }
+
+        return "Google Play reports are stale — oldest data is \(Fmt.day(oldest))."
     }
 
     /// Both stores' figures as one row per app, sorted by name.
